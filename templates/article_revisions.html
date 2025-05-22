@@ -9,14 +9,10 @@
     <tbody>
     {% for r in revisions %}
         <tr>
-            <td>
-                {% if r['revision_id'] %}
-                <a href="https://fr.wikipedia.org/w/index.php?title={{ title|urlencode }}&diff=prev&oldid={{ r['revision_id'] }}"
-                target="_blank" class="diff-link">
-                    View Diff (ID: {{ r['revision_id'] }})
-                </a>
-                {% endif %}
-            </td>
+            <td>{{ r['rev_id'] }}</td>
+            <td>{{ r['username'] }}</td>
+            <td>{{ r['timestamp'] }}</td>
+            <td>{{ r['comment'] }}</td>
         </tr>
     {% endfor %}
     </tbody>
