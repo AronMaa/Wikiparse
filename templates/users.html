@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Utilisateurs</h1>
+<form method="get" class="filter-form">
+    <!-- Filter inputs remain the same -->
+</form>
+
+{% if not users %}
+    <div class="empty-state">Aucun utilisateur trouvé</div>
+{% else %}
+    <table>
+        <thead>
+            <tr><th>ID</th><th>Nom</th><th>IPs</th><th>Bots</th><th>Bloqués</th><th>Contributions</th></tr>
+        </thead>
+        <tbody>
+        {% for u in users %}
+            <tr>
+                <td>{{ u['id'] }}</td>
+                <td>
+                    <a href="https://fr.wikiscan.org/?menu=userstats&user={{ u['username'] }}" 
+                       target="_blank"
+                       rel="noopener noreferrer">
+                        {{ u['username'] }}
+                    </a>
+                </td>
+                <td>{{ '✓' if u['is_ip'] }}</td>
+                <td>{{ '✓' if u['is_bot'] }}</td>
+                <td>{{ '✓' if u['is_blocked'] }}</td>
+                <td>{{ u['contributions'] }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% endif %}
+{% endblock %}

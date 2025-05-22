@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block title %}Peupler la base{% endblock %}
+{% block content %}
+<h1>Peupler la base de données</h1>
+<form method="post">
+    <label>Titre de l'article Wikipédia: <input type="text" name="article" required></label>
+    <button type="submit">Charger</button>
+</form>
+{% endblock %}
