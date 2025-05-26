@@ -252,3 +252,31 @@ th { background-color: #f0f0f0; }
     color: #999;
     font-style: italic;
 }
+
+/* Pagination styles */
+.pagination {
+    margin: 20px 0;
+    text-align: center;
+}
+
+.pagination a, .pagination span {
+    padding: 5px 10px;
+    margin: 0 2px;
+    border: 1px solid #ddd;
+    text-decoration: none;
+}
+
+.pagination a:hover {
+    background: #eee;
+}
+
+.pagination .current-page {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.per-page-selector {
+    margin: 10px 0;
+    text-align: right;
+}

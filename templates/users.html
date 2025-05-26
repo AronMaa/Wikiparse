@@ -2,20 +2,37 @@
 {% block content %}
 <h1>Utilisateurs</h1>
 <form method="get" class="filter-form">
-    <!-- Filter inputs remain the same -->
+    <label><input type="checkbox" name="bots" value="1" {% if filters.bots == '1' %}checked{% endif %}> Bots</label>
+    <label><input type="checkbox" name="ips" value="1" {% if filters.ips == '1' %}checked{% endif %}> IPs</label>
+    <label><input type="checkbox" name="blocked" value="1" {% if filters.blocked == '1' %}checked{% endif %}> Bloqués</label>
+    <label>Actifs dans les derniers jours: <input type="number" name="active_days" value="{{ filters.active_days or '' }}"></label>
+    <label>Article: <input type="text" name="article" value="{{ filters.article or '' }}"></label>
+    <input type="hidden" name="page" value="1">
+    <button type="submit">Filtrer</button>
 </form>
+
+<!-- Items per page selector -->
+<div class="per-page-selector">
+    <form method="get" action="">
+        {% for key, value in filters.items() %}
+            {% if value and key not in ['per_page', 'page'] %}
+                <input type="hidden" name="{{ key }}" value="{{ value }}">
+            {% endif %}
+        {% endfor %}
+        <label for="per_page">Items per page:</label>
+        <select name="per_page" onchange="this.form.submit()">
+            <option value="10" {% if pagination.per_page == 10 %}selected{% endif %}>10</option>
+            <option value="25" {% if pagination.per_page == 25 %}selected{% endif %}>25</option>
+            <option value="50" {% if pagination.per_page == 50 %}selected{% endif %}>50</option>
+            <option value="100" {% if pagination.per_page == 100 %}selected{% endif %}>100</option>
+        </select>
+        <input type="hidden" name="page" value="1">
+    </form>
+</div>
 
 {% if not users %}
     <div class="empty-state">Aucun utilisateur trouvé</div>
 {% else %}
-    <form method="get">
-        <label><input type="checkbox" name="bots" value="1" {% if filters.get('bots')=='1' %}checked{% endif %}> Bots</label>
-        <label><input type="checkbox" name="ips" value="1" {% if filters.get('ips')=='1' %}checked{% endif %}> IPs</label>
-        <label><input type="checkbox" name="blocked" value="1" {% if filters.get('blocked')=='1' %}checked{% endif %}> Bloqués</label>
-        <label>Actifs dans les derniers jours: <input type="number" name="active_days" value="{{ filters.get('active_days','') }}"></label>
-        <label>Article: <input type="text" name="article" value="{{ filters.get('from_article','') }}"></label>
-        <button type="submit">Filtrer</button>
-    </form>
     <table>
         <thead>
             <tr><th>ID</th><th>Nom</th><th>IPs</th><th>Bots</th><th>Bloqués</th><th>Contributions</th><th>Article</th></tr>
@@ -44,5 +61,24 @@
         {% endfor %}
         </tbody>
     </table>
+
+    <!-- Pagination -->
+    <div class="pagination">
+        {% if pagination.page > 1 %}
+            <a href="{{ url_for('users_list', page=pagination.page-1, per_page=pagination.per_page, **filters) }}">&laquo; Previous</a>
+        {% endif %}
+        
+        {% for p in range(1, (pagination.total // pagination.per_page + 2)) %}
+            {% if p == pagination.page %}
+                <span class="current-page">{{ p }}</span>
+            {% else %}
+                <a href="{{ url_for('users_list', page=p, per_page=pagination.per_page, **filters) }}">{{ p }}</a>
+            {% endif %}
+        {% endfor %}
+        
+        {% if pagination.page * pagination.per_page < pagination.total %}
+            <a href="{{ url_for('users_list', page=pagination.page+1, per_page=pagination.per_page, **filters) }}">Next &raquo;</a>
+        {% endif %}
+    </div>
 {% endif %}
 {% endblock %}

@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, url_for, redirect, flash
 import sqlite3
 from datetime import datetime
 from populate import init_db, fetch_revisions_from_api, update_database
-from queries import fetch_users, fetch_revisions_db
+from queries import count_users, fetch_users, fetch_revisions_db
 
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'  # In production, use proper secret management
@@ -67,21 +67,59 @@ def article_detail(title):
 
 @app.route('/users')
 def users_list():
-    """Filterable user list"""
+    """Filterable user list with pagination"""
     try:
         conn = get_conn()
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 25, type=int)
+        
+        # Collect all filters
+        filters = {
+            'article': request.args.get('article'),
+            'bots': request.args.get('bots'),
+            'ips': request.args.get('ips'),
+            'blocked': request.args.get('blocked'),
+            'active_days': request.args.get('active_days', type=int)
+        }
+        
         users = fetch_users(
             conn,
-            article_title=request.args.get('article'),
-            bots_only=request.args.get('bots') == '1',
-            ips_only=request.args.get('ips') == '1',
-            blocked_only=request.args.get('blocked') == '1',
-            active_within_days=request.args.get('active_days', type=int)
+            article_title=filters['article'],
+            bots_only=filters['bots'] == '1',
+            ips_only=filters['ips'] == '1',
+            blocked_only=filters['blocked'] == '1',
+            active_within_days=filters['active_days'],
+            limit=per_page,
+            page=page
         )
-        return render_template('users.html', users=users, filters=request.args)
+        
+        total = count_users(
+            conn,
+            article_title=filters['article'],
+            bots_only=filters['bots'] == '1',
+            ips_only=filters['ips'] == '1',
+            blocked_only=filters['blocked'] == '1',
+            active_within_days=filters['active_days']
+        )
+        
+        return render_template('users.html', 
+                            users=users, 
+                            filters=filters,
+                            pagination={
+                                'page': page,
+                                'per_page': per_page,
+                                'total': total
+                            })
     except Exception as e:
         flash(f"Error loading users: {str(e)}", "error")
-        return render_template('users.html', users=[], filters=request.args)
+        return render_template('users.html', 
+                            users=[], 
+                            filters=request.args,
+                            pagination={
+                                'page': 1,
+                                'per_page': 25,
+                                'total': 0
+                            })
     finally:
         if conn: conn.close()
 
@@ -90,6 +128,11 @@ def user_infos(username):
     try:
         conn = get_conn()
         cursor = conn.cursor()
+        
+        # Get pagination parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 25, type=int)
+        offset = (page - 1) * per_page
         
         # Get user information
         cursor.execute("""
@@ -103,7 +146,7 @@ def user_infos(username):
             flash(f"Utilisateur {username} non trouvé", "error")
             return redirect(url_for('index'))
         
-        # Get user revisions
+        # Get user revisions with pagination
         cursor.execute("""
             SELECT r.revision_id, r.parent_id, r.timestamp, r.comment, 
                    a.title as article_title, u.username
@@ -112,7 +155,8 @@ def user_infos(username):
             JOIN users u ON u.id = r.user_id
             WHERE u.username = ?
             ORDER BY r.timestamp DESC
-        """, (username,))  # Fixed missing comma here
+            LIMIT ? OFFSET ?
+        """, (username, per_page, offset))
         revisions = [dict(row) for row in cursor.fetchall()]
         
         # Get total count
@@ -138,11 +182,12 @@ def user_infos(username):
                             user=dict(user),
                             revisions=revisions,
                             stats=stats,
-                            total=total)
+                            total=total,
+                            page=page,
+                            per_page=per_page)
         
     except Exception as e:
         flash(f"Erreur lors du chargement des contributions: {str(e)}", "error")
-        # Provide default stats in case of error
         default_stats = {
             'edited_articles_count': 0,
             'first_edit': None,
@@ -155,7 +200,7 @@ def user_infos(username):
                             total=0)
     finally:
         if conn: conn.close()
-
+        
 @app.route('/populate', methods=['GET', 'POST'])
 def populate_db():
     """Database population endpoint"""

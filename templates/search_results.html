@@ -16,7 +16,13 @@
 <h2>Utilisateurs</h2>
 <ul>
     {% for u in users %}
-        <li>{{ u['username'] }} {% if u['is_bot'] %}(bot){% endif %}</li>
+        <li>
+            <a href="{{ url_for('user_infos', username=u['username']) }}">
+                {{ u['username'] }}
+                {% if u['is_bot'] %}(bot){% endif %}
+                {% if u['is_blocked'] %}(blocked){% endif %}
+            </a>
+        </li>
     {% endfor %}
 </ul>
 {% endif %}
