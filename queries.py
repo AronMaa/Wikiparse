@@ -43,7 +43,7 @@ def fetch_users(conn, article_title=None, bots_only=False, ips_only=False,
     where_clause = f"WHERE {' AND '.join(filters)}" if filters else ""
     query = f"""
         SELECT u.id, u.username, u.is_ip, u.is_bot, u.is_blocked, 
-               COUNT(DISTINCT r.id) AS contributions
+               COUNT(DISTINCT r.id) AS contributions, from_article
         FROM users u
         LEFT JOIN revisions r ON r.user_id = u.id
         {joins}
