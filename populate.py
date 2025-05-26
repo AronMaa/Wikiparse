@@ -36,6 +36,14 @@ def init_db(db_path):
         FOREIGN KEY(article_id) REFERENCES articles(id),
         FOREIGN KEY(user_id) REFERENCES users(id)
     );
+                         
+    CREATE TABLE IF NOT EXISTS scheduled_articles (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT UNIQUE NOT NULL,
+        interval_hours INTEGER DEFAULT 24,
+        last_populated TEXT,
+        is_active INTEGER DEFAULT 1
+    );
     """)
 
     conn.commit()

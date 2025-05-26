@@ -11,6 +11,7 @@
         <a href="{{ url_for('articles') }}">Articles</a> |
         <a href="{{ url_for('users_list') }}">Utilisateurs</a> |
         <a href="{{ url_for('populate_db') }}">Peupler DB</a>
+        <a href="{{ url_for('populate_schedule') }}">Planifier</a>
     </nav>
     <form action="{{ url_for('search') }}" method="get" class="global-search">
     <input type="text" name="q" placeholder="Rechercher un article ou un utilisateur…" required>

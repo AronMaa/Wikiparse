@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, url_for, redirect, flash
 import sqlite3
-from datetime import datetime
+import atexit
+from apscheduler.schedulers.background import BackgroundScheduler
 from populate import init_db, fetch_revisions_from_api, update_database
 from queries import count_users, fetch_users, fetch_revisions_db, fetch_articles
 
@@ -17,6 +18,35 @@ def get_conn():
     except sqlite3.Error as e:
         flash(f"Database error: {str(e)}", "error")
         return None
+
+def check_scheduled_population():
+    """Check for articles that need to be populated based on schedule"""
+    conn = get_conn()
+    try:
+        articles = conn.execute("""
+            SELECT title FROM scheduled_articles 
+            WHERE is_active = 1 AND (
+                last_populated IS NULL OR 
+                datetime(last_populated, '+' || interval_hours || ' hours') < datetime('now')
+            )
+        """).fetchall()
+        
+        for article in articles:
+            try:
+                populate_article_now(article['title'])
+                print(f"Populated {article['title']} on schedule")
+            except Exception as e:
+                print(f"Error populating {article['title']}: {str(e)}")
+    finally:
+        conn.close()
+
+# Initialize scheduler
+scheduler = BackgroundScheduler()
+scheduler.add_job(check_scheduled_population, 'interval', minutes=30)
+scheduler.start()
+
+# Shut down the scheduler when exiting the app
+atexit.register(lambda: scheduler.shutdown())
 
 @app.route('/')
 def index():
@@ -251,6 +281,62 @@ def populate_db():
             return redirect(url_for('populate_db'))
     
     return render_template('populate.html')
+
+@app.route('/populate/schedule', methods=['GET', 'POST'])
+def populate_schedule():
+    conn = get_conn()
+    try:
+        if request.method == 'POST':
+            action = request.form.get('action')
+            if action == 'add':
+                title = request.form.get('title').strip()
+                interval = int(request.form.get('interval', 24))
+                conn.execute(
+                    "INSERT OR REPLACE INTO scheduled_articles (title, interval_hours) VALUES (?, ?)",
+                    (title, interval)
+                )
+                conn.commit()
+                flash(f"Added {title} to scheduled population", "success")
+            elif action == 'remove':
+                title = request.form.get('title')
+                conn.execute("DELETE FROM scheduled_articles WHERE title = ?", (title,))
+                conn.commit()
+                flash(f"Removed {title} from scheduled population", "success")
+            elif action == 'toggle':
+                title = request.form.get('title')
+                conn.execute(
+                    "UPDATE scheduled_articles SET is_active = NOT is_active WHERE title = ?",
+                    (title,)
+                )
+                conn.commit()
+                flash("Schedule status updated", "success")
+            elif action == 'run_now':
+                title = request.form.get('title')
+                populate_article_now(title)
+                flash(f"Manually populated {title}", "success")
+
+        # Get all scheduled articles
+        scheduled = conn.execute(
+            "SELECT *, datetime(last_populated) as last_populated_pretty FROM scheduled_articles"
+        ).fetchall()
+        
+        return render_template('populate_schedule.html', scheduled=scheduled)
+    finally:
+        conn.close()
+
+def populate_article_now(title):
+    """Helper function to populate an article immediately"""
+    conn = get_conn()
+    try:
+        revisions = fetch_revisions_from_api(title)
+        update_database(conn, title, revisions)
+        conn.execute(
+            "UPDATE scheduled_articles SET last_populated = datetime('now') WHERE title = ?",
+            (title,)
+        )
+        conn.commit()
+    finally:
+        conn.close()
 
 @app.route('/search')
 def search():
