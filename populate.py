@@ -22,9 +22,7 @@ def init_db(db_path):
         is_ip INTEGER,
         is_bot INTEGER,
         is_blocked INTEGER,
-        from_article TEXT,
-        UNIQUE(username),
-        FOREIGN KEY(from_article) REFERENCES articles(id)
+        UNIQUE(username)
     );
 
     CREATE TABLE IF NOT EXISTS revisions (
@@ -141,14 +139,13 @@ def update_database(conn, article_title, revisions):
         
         # Insert or ignore user
         cur.execute("""
-            INSERT OR IGNORE INTO users (username, is_ip, is_bot, is_blocked, from_article)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT OR IGNORE INTO users (username, is_ip, is_bot, is_blocked)
+            VALUES (?, ?, ?, ?)
         """, (
             username, 
             int(user_info['is_ip']), 
             int(user_info['is_bot']), 
-            int(user_info.get('is_blocked', False)),
-            article_title
+            int(user_info.get('is_blocked', False))
         ))
 
         conn.commit()
