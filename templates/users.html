@@ -7,6 +7,15 @@
     <label><input type="checkbox" name="blocked" value="1" {% if filters.blocked == '1' %}checked{% endif %}> Bloqués</label>
     <label>Actifs dans les derniers jours: <input type="number" name="active_days" value="{{ filters.active_days or '' }}"></label>
     <label>Article: <input type="text" name="article" value="{{ filters.article or '' }}"></label>
+    
+    <label>Trier par:
+        <select name="sort">
+            <option value="contributions" {% if filters.sort == 'contributions' %}selected{% endif %}>Contributions</option>
+            <option value="newest" {% if filters.sort == 'newest' %}selected{% endif %}>Plus récent</option>
+            <option value="oldest" {% if filters.sort == 'oldest' %}selected{% endif %}>Plus ancien</option>
+        </select>
+    </label>
+    
     <input type="hidden" name="page" value="1">
     <button type="submit">Filtrer</button>
 </form>

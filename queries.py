@@ -12,14 +12,14 @@ def fetch_revisions_db(conn, article_title, limit=25, page=1):
     """, (article_title, limit, offset))
     return cur.fetchall()
 
-
 def fetch_users(conn, article_title=None, bots_only=False, ips_only=False,
-                blocked_only=False, active_within_days=None, limit=25, page=1):
+                blocked_only=False, active_within_days=None, limit=25, page=1, sort='contributions'):
     """Fetch filtered user list from DB."""
     offset = (page - 1) * limit
     params = []
     filters = []
     joins = ""
+    order_by = ""
 
     if article_title:
         joins += """
@@ -40,8 +40,16 @@ def fetch_users(conn, article_title=None, bots_only=False, ips_only=False,
         joins += " JOIN revisions rev2 ON rev2.user_id = u.id"
         filters.append("rev2.timestamp >= datetime('now', ?)")
         params.append(f"-{active_within_days} days")
-
-    where_clause = f"WHERE {' AND '.join(filters)}" if filters else ""
+    
+    # Add sorting logic
+    if sort == 'contributions':
+        order_by = "ORDER BY contributions DESC"
+    elif sort == 'newest':
+        order_by = "ORDER BY last_edit DESC"
+        joins += " LEFT JOIN (SELECT user_id, MAX(timestamp) as last_edit FROM revisions GROUP BY user_id) le ON le.user_id = u.id"
+    elif sort == 'oldest':
+        order_by = "ORDER BY first_edit ASC"
+        joins += " LEFT JOIN (SELECT user_id, MIN(timestamp) as first_edit FROM revisions GROUP BY user_id) fe ON fe.user_id = u.id"
     
     params.extend([limit, offset])
 
@@ -49,16 +57,14 @@ def fetch_users(conn, article_title=None, bots_only=False, ips_only=False,
             SELECT u.id, u.username, u.is_ip, u.is_bot, u.is_blocked, 
                 COUNT(DISTINCT rev.id) AS contributions, from_article
             FROM users u
-            {"JOIN revisions r ON r.user_id = u.id JOIN articles a ON a.id = r.article_id" if article_title else ""}
+            {joins}
             LEFT JOIN revisions rev ON rev.user_id = u.id
             {f"AND rev.article_id = a.id" if article_title else ""}
-            {f"JOIN revisions rev2 ON rev2.user_id = u.id" if active_within_days else ""}
             {f"WHERE {' AND '.join(filters)}" if filters else ""}
             GROUP BY u.id
-            ORDER BY contributions DESC
+            {order_by}
             LIMIT ? OFFSET ?
             """
-
 
     cur = conn.cursor()
     return cur.execute(query, params).fetchall()

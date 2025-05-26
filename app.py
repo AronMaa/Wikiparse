@@ -79,7 +79,8 @@ def users_list():
             'bots': request.args.get('bots'),
             'ips': request.args.get('ips'),
             'blocked': request.args.get('blocked'),
-            'active_days': request.args.get('active_days', type=int)
+            'active_days': request.args.get('active_days', type=int),
+            'sort': request.args.get('sort', 'contributions') 
         }
         
         users = fetch_users(
@@ -90,7 +91,8 @@ def users_list():
             blocked_only=filters['blocked'] == '1',
             active_within_days=filters['active_days'],
             limit=per_page,
-            page=page
+            page=page,
+            sort=filters['sort']
         )
         
         total = count_users(
