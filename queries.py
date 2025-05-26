@@ -108,3 +108,19 @@ def count_users(conn, article_title=None, bots_only=False, ips_only=False,
 
     cur = conn.cursor()
     return cur.execute(query, params).fetchone()[0]
+
+def fetch_articles(conn, limit=25, page=1):
+    offset = (page - 1) * limit
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT a.id, a.title, 
+               COUNT(r.id) AS nb_revisions,
+               COUNT(DISTINCT r.user_id) AS nb_users,
+               MAX(r.timestamp) AS last_change
+        FROM articles a
+        LEFT JOIN revisions r ON r.article_id = a.id
+        GROUP BY a.id
+        ORDER BY last_change DESC
+        LIMIT ? OFFSET ?
+    """, (limit, offset))
+    return cur.fetchall()

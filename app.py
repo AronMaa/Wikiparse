@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, url_for, redirect, flash
 import sqlite3
 from datetime import datetime
 from populate import init_db, fetch_revisions_from_api, update_database
-from queries import count_users, fetch_users, fetch_revisions_db
+from queries import count_users, fetch_users, fetch_revisions_db, fetch_articles
 
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'  # In production, use proper secret management
@@ -38,7 +38,29 @@ def index():
     finally:
         if conn: conn.close()
 
-@app.route('/article/<title>')
+@app.route('/articles')
+def articles():
+    """Article list with precisions"""
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 25, type=int)
+    try:
+        conn = get_conn()
+        cursor = conn.cursor()
+        articles = fetch_articles(conn, limit=per_page, page=page)  # Pass conn to fetch_articles
+        cursor.execute("SELECT COUNT(*) FROM articles")
+        total = cursor.fetchone()[0]
+        return render_template('articles_details.html',
+                            articles=articles,
+                            page=page,
+                            per_page=per_page,
+                            total=total)
+    except Exception as e:
+        flash(f"Error loading articles: {str(e)}", "error")
+        return render_template('articles_details.html', articles=[])
+    finally:
+        if conn: conn.close()
+
+@app.route('/articles/<title>')
 def article_detail(title):
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 25, type=int)
