@@ -2,17 +2,35 @@
 {% block title %}Révisions - {{ title }}{% endblock %}
 {% block content %}
 <h1>Révisions de &laquo; {{ title }} &raquo;</h1>
-<table>
+<table class="revision-table">
     <thead>
-        <tr><th>ID</th><th>Utilisateur</th><th>Date</th><th>Commentaire</th></tr>
+        <tr>
+            <th>ID</th>
+            <th>Utilisateur</th>
+            <th>Date</th>
+            <th>Commentaire</th>
+            <th>Diff</th>
+        </tr>
     </thead>
     <tbody>
     {% for r in revisions %}
         <tr>
-            <td>{{ r['rev_id'] }}</td>
+            <td>{{ r['revision_id'] }}</td>
             <td>{{ r['username'] }}</td>
             <td>{{ r['timestamp'] }}</td>
             <td>{{ r['comment'] }}</td>
+            <td>
+                {% if r['parent_id'] %}
+                <a href="https://fr.wikipedia.org/w/index.php?title={{ title|urlencode }}&diff={{ r['revision_id'] }}&oldid={{ r['parent_id'] }}"
+                   target="_blank" 
+                   class="diff-link"
+                   title="Voir les modifications">
+                    🔍 Diff
+                </a>
+                {% else %}
+                <span class="no-diff">Première version</span>
+                {% endif %}
+            </td>
         </tr>
     {% endfor %}
     </tbody>

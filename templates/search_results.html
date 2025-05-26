@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}Résultats pour "{{ query }}"{% endblock %}
+{% block content %}
+<h1>Résultats de recherche pour « {{ query }} »</h1>
+
+{% if articles %}
+<h2>Articles</h2>
+<ul>
+    {% for a in articles %}
+        <li><a href="{{ url_for('article_detail', title=a['title']) }}">{{ a['title'] }}</a></li>
+    {% endfor %}
+</ul>
+{% endif %}
+
+{% if users %}
+<h2>Utilisateurs</h2>
+<ul>
+    {% for u in users %}
+        <li>{{ u['username'] }} {% if u['is_bot'] %}(bot){% endif %}</li>
+    {% endfor %}
+</ul>
+{% endif %}
+
+{% if not articles and not users %}
+<p>Aucun résultat trouvé.</p>
+{% endif %}
+{% endblock %}

@@ -10,3 +10,39 @@ th { background-color: #f0f0f0; }
     border: 1px solid #ddd;
     margin-right: 5px;
 }
+
+.revision-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.revision-table th, .revision-table td {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+
+.diff-link {
+    color: #0645ad;
+    text-decoration: none;
+}
+
+.diff-link:hover {
+    text-decoration: underline;
+}
+
+.no-diff {
+    color: #999;
+    font-style: italic;
+}
+
+.global-search {
+    float: right;
+    margin-right: 1em;
+}
+.global-search input {
+    padding: 4px;
+}
+.global-search button {
+    padding: 4px 8px;
+}

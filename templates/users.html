@@ -8,6 +8,14 @@
 {% if not users %}
     <div class="empty-state">Aucun utilisateur trouvé</div>
 {% else %}
+    <form method="get">
+        <label><input type="checkbox" name="bots" value="1" {% if filters.get('bots')=='1' %}checked{% endif %}> Bots</label>
+        <label><input type="checkbox" name="ips" value="1" {% if filters.get('ips')=='1' %}checked{% endif %}> IPs</label>
+        <label><input type="checkbox" name="blocked" value="1" {% if filters.get('blocked')=='1' %}checked{% endif %}> Bloqués</label>
+        <label>Actifs dans les derniers jours: <input type="number" name="active_days" value="{{ filters.get('active_days','') }}"></label>
+        <label>Article: <input type="text" name="article" value="{{ filters.get('article','') }}"></label>
+        <button type="submit">Filtrer</button>
+    </form>
     <table>
         <thead>
             <tr><th>ID</th><th>Nom</th><th>IPs</th><th>Bots</th><th>Bloqués</th><th>Contributions</th></tr>

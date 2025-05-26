@@ -40,13 +40,25 @@ def index():
 
 @app.route('/article/<title>')
 def article_detail(title):
-    """Article revision history"""
+    page = request.args.get('page', 1, type=int)
+    per_page = 25
     try:
         conn = get_conn()
-        revisions = fetch_revisions_db(conn, article_title=title, limit=100)
+        revisions = fetch_revisions_db(conn, article_title=title, limit=per_page, page=page)
+        # Get total count for pagination
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT COUNT(*) FROM revisions r
+            JOIN articles a ON a.id = r.article_id
+            WHERE a.title = ?
+        """, (title,))
+        total = cur.fetchone()[0]
         return render_template('article_revisions.html', 
                              title=title, 
-                             revisions=revisions)
+                             revisions=revisions,
+                             page=page,
+                             per_page=per_page,
+                             total=total)
     except Exception as e:
         flash(f"Error loading revisions: {str(e)}", "error")
         return render_template('article_revisions.html', title=title, revisions=[])
@@ -99,6 +111,39 @@ def populate_db():
             return redirect(url_for('populate_db'))
     
     return render_template('populate.html')
+
+@app.route('/search')
+def search():
+    query = request.args.get('q', '').strip().lower()
+    if not query:
+        flash("Veuillez entrer une requête de recherche.", "error")
+        return redirect(url_for('index'))
+
+    try:
+        conn = get_conn()
+        cursor = conn.cursor()
+
+        # Search articles
+        cursor.execute('''
+            SELECT title FROM articles
+            WHERE LOWER(title) LIKE ?
+        ''', (f"%{query}%",))
+        articles = cursor.fetchall()
+
+        # Search users
+        cursor.execute('''
+            SELECT * FROM users
+            WHERE LOWER(username) LIKE ?
+        ''', (f"%{query}%",))
+        users = cursor.fetchall()
+
+        return render_template('search_results.html', query=query, articles=articles, users=users)
+
+    except Exception as e:
+        flash(f"Erreur de recherche : {str(e)}", "error")
+        return redirect(url_for('index'))
+    finally:
+        if conn: conn.close()
 
 if __name__ == '__main__':
     init_db(DB_PATH)

@@ -1,70 +1,84 @@
 import sqlite3
 import requests
 from datetime import datetime
+import ipaddress
+
+API_URL = "https://fr.wikipedia.org/w/api.php"
 
 def init_db(db_path):
-    """Initialise la base de données"""
-    print(f"[init_db] Initialisation de la base de données : {db_path}")
+    """Create tables if they don't exist."""
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
-    print("[init_db] Création des tables si elles n'existent pas...")
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS articles (
-            id INTEGER PRIMARY KEY,
-            title TEXT UNIQUE,
-            last_fetched TIMESTAMP
-        )
-    ''')
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY,
-            username TEXT UNIQUE,
-            is_ip BOOLEAN,
-            is_bot BOOLEAN,
-            is_blocked BOOLEAN,
-            last_checked TIMESTAMP
-        )
-    ''')
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS revisions (
-            id INTEGER PRIMARY KEY,
-            article_id INTEGER,
-            user_id INTEGER,
-            timestamp TIMESTAMP,
-            content_diff TEXT,
-            comment TEXT,
-            FOREIGN KEY(article_id) REFERENCES articles(id),
-            FOREIGN KEY(user_id) REFERENCES users(id)
-        )
-    ''')
-    conn.commit()
-    print("[init_db] Tables créées et base de données prête.")
-    return conn
+    cursor.executescript("""
+    CREATE TABLE IF NOT EXISTS articles (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT UNIQUE NOT NULL
+    );
 
-def fetch_revisions_from_api(article_title):
-    """Récupère toutes les révisions (API Wikipédia)"""
-    print(f"[fetch_revisions] Démarrage pour : {article_title}")
-    api_url = "https://fr.wikipedia.org/w/api.php"
-    params = {
-        'action': 'query',
-        'prop': 'revisions',
-        'titles': article_title,
-        'rvprop': 'user|timestamp|comment|content',
-        'rvlimit': 'max',
-        'rvslots': 'main',
-        'format': 'json'
-    }
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT,
+        is_ip INTEGER,
+        is_bot INTEGER,
+        is_blocked INTEGER,
+        UNIQUE(username)
+    );
+
+    CREATE TABLE IF NOT EXISTS revisions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        revision_id INTEGER UNIQUE,
+        article_id INTEGER,
+        user_id INTEGER,
+        timestamp TEXT,
+        comment TEXT,
+        parent_id INTEGER,
+        FOREIGN KEY(article_id) REFERENCES articles(id),
+        FOREIGN KEY(user_id) REFERENCES users(id)
+    );
+    """)
+
+    conn.commit()
+    conn.close()
+
+def fetch_revisions_from_api(title):
+    """Fetch all revisions of a Wikipedia article using the MediaWiki API."""
     session = requests.Session()
+    params = {
+        "action": "query",
+        "prop": "revisions",
+        "titles": title,
+        "rvlimit": "max",
+        "rvprop": "ids|timestamp|user|comment|flags",
+        "formatversion": "2",
+        "format": "json",
+        "continue": ""
+    }
+
     revisions = []
+    total_fetched = 0
 
     while True:
         print("[fetch_revisions] Envoi de la requête API…")
-        resp = session.get(api_url, params=params)
+        resp = session.get(API_URL, params=params)
         resp.raise_for_status()
         data = resp.json()
-        for page in data['query']['pages'].values():
-            revisions.extend(page.get('revisions', []))
+
+        pages = data.get("query", {}).get("pages", [])
+        if not pages or "revisions" not in pages[0]:
+            break
+
+        for rev in pages[0]["revisions"]:
+            revisions.append({
+                "revision_id": rev.get("revid"),
+                "parent_id": rev.get("parentid"),
+                "timestamp": rev.get("timestamp"),
+                "user": rev.get("user"),
+                "comment": rev.get("comment", ""),
+                'is_bot': 'bot' in rev.get('groups', [])
+            })
+            total_fetched += 1
+
         if 'continue' in data:
             print("[fetch_revisions] Suite paginée, chargement…")
             params.update(data['continue'])
@@ -77,13 +91,6 @@ def fetch_revisions_from_api(article_title):
 def get_user_info(username):
     """Récupère bot/ip/bloqué via API ou détection IP"""
     print(f"[get_user_info] Analyse de {username}")
-    # détection IP
-    try:
-        import ipaddress
-        ipaddress.ip_address(username)
-        return {'is_ip': True, 'is_bot': False, 'is_blocked': False}
-    except ValueError:
-        pass
 
     api_url = "https://fr.wikipedia.org/w/api.php"
     params = {
@@ -100,64 +107,57 @@ def get_user_info(username):
     # utilisateurs manquants ou invalides
     if user.get('missing') or user.get('invalid'):
         return {'is_ip': False, 'is_bot': False, 'is_blocked': False}
+    
+    # détection IP
+    try:
+        ipaddress.ip_address(username)
+        return {'is_ip': True, 'is_bot': False, 'is_blocked': 'blockid' in user}
+    except ValueError:
+        pass
 
     return {
         'is_ip': False,
-        'is_bot': 'bot' in user.get('groups', []),
+        'is_bot': 'bot' in user.get('groups', [])or 'bot' == username[-3:].lower(),
         'is_blocked': 'blockid' in user
     }
 
 def update_database(conn, article_title, revisions):
-    cursor = conn.cursor()
-    
-    # Insert article
-    cursor.execute('''
-        INSERT OR IGNORE INTO articles (title, last_fetched)
-        VALUES (?, ?)
-    ''', (article_title, datetime.now()))
-    
-    # Get article ID
-    article_id = cursor.execute(
-        'SELECT id FROM articles WHERE title = ?', (article_title,)
-    ).fetchone()[0]
+    """Insert article and revision data into the database."""
+    cur = conn.cursor()
 
-    for i, rev in enumerate(revisions, start=1):
-        user = rev['user']
-        ts = datetime.strptime(rev['timestamp'], '%Y-%m-%dT%H:%M:%SZ')
-        info = get_user_info(user)
-        print(f"[update_db] Rév#{i} by {user} → {info}")
-        
-        # Use INSERT OR REPLACE to handle updates
-        cursor.execute('''
-            INSERT OR REPLACE INTO users 
-            (id, username, is_ip, is_bot, is_blocked, last_checked)
-            VALUES (
-                (SELECT id FROM users WHERE username = ?),
-                ?, ?, ?, ?, ?
-            )
-        ''', (user, user, *get_user_info(user).values(), datetime.now()))
-        
-        # Get user ID
-        user_id = cursor.execute(
-            'SELECT id FROM users WHERE username = ?', (user,)
-        ).fetchone()[0]
+    # Insert or ignore article
+    cur.execute("INSERT OR IGNORE INTO articles (title) VALUES (?)", (article_title,))
+    conn.commit()
+    cur.execute("SELECT id FROM articles WHERE title = ?", (article_title,))
+    article_id = cur.fetchone()["id"]
 
-        # revisions
-        content = rev.get('slots', {}) \
-                     .get('main', {}) \
-                     .get('content', '')
-        comment = rev.get('comment', '')
-        cursor.execute('''
-            INSERT INTO revisions
-            (article_id, user_id, timestamp, content_diff, comment)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (article_id, user_id, ts, content, comment))
+    for rev in revisions:
+        username = rev["user"]
+        user_info = get_user_info(username)
+        
+        # Insert or ignore user
+        cur.execute("""
+            INSERT OR IGNORE INTO users (username, is_ip, is_bot, is_blocked)
+            VALUES (?, ?, ?, ?)
+        """, (
+            username, 
+            int(user_info['is_ip']), 
+            int(user_info['is_bot']), 
+            int(user_info.get('is_blocked', False))
+        ))
+
+        conn.commit()
+        cur.execute("SELECT id FROM users WHERE username = ?", (username,))
+        user_id = cur.fetchone()["id"]
+
+        # Insert revision
+        cur.execute("""
+            INSERT OR IGNORE INTO revisions
+            (revision_id, article_id, user_id, timestamp, comment, parent_id)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (
+            rev["revision_id"], article_id, user_id, rev["timestamp"],
+            rev["comment"], rev.get("parent_id")
+        ))
 
     conn.commit()
-    print("[update_db] Terminé.")
-
-if __name__ == '__main__':
-    conn = init_db("wikipedia.db")
-    revs = fetch_revisions_from_api("Israël")
-    update_database(conn, "Israël", revs)
-    conn.close()
