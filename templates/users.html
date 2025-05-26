@@ -44,7 +44,7 @@
 {% else %}
     <table>
         <thead>
-            <tr><th>ID</th><th>Nom</th><th>IPs</th><th>Bots</th><th>Bloqués</th><th>Contributions</th></tr>
+            <tr><th>ID</th><th>Nom</th><th>IP</th><th>Bot</th><th>Bloqué</th><th>Contributions</th><th>Dernière activité</th></tr>
         </thead>
         <tbody>
         {% for u in users %}
@@ -65,6 +65,7 @@
                 <td>{{ '✓' if u['is_bot'] }}</td>
                 <td>{{ '✓' if u['is_blocked'] }}</td>
                 <td>{{ u['contributions'] }}</td>
+                <td>{{ u['last_activity'] }}</td>
             </tr>
         {% endfor %}
         </tbody>

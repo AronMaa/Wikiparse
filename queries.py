@@ -55,7 +55,8 @@ def fetch_users(conn, article_title=None, bots_only=False, ips_only=False,
 
     query = f"""
             SELECT u.id, u.username, u.is_ip, u.is_bot, u.is_blocked, 
-                COUNT(DISTINCT rev.id) AS contributions
+                COUNT(DISTINCT rev.id) AS contributions,
+                MAX(rev.timestamp) AS last_activity
             FROM users u
             {joins}
             LEFT JOIN revisions rev ON rev.user_id = u.id

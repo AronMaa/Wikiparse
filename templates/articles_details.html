@@ -41,7 +41,7 @@
             <td>{{ a['nb_revisions'] }}</td>
             <td>{{ a['nb_users'] }}</td>
             <td>
-                <a href="{{ url_for('users_list', article=a['title'], page=1, sort=newest) }}"
+                <a href="{{ url_for('users_list', article=a['title'], active_days='', page=1, sort='newest') }}"
                     class="user-link"
                     title="Voir les utilisateurs">
                     {{ a['last_change'] }}
