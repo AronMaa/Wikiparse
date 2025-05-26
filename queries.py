@@ -46,16 +46,19 @@ def fetch_users(conn, article_title=None, bots_only=False, ips_only=False,
     params.extend([limit, offset])
 
     query = f"""
-    SELECT u.id, u.username, u.is_ip, u.is_bot, u.is_blocked, 
-           COUNT(DISTINCT rev.id) AS contributions, from_article
-    FROM users u
-    LEFT JOIN revisions rev ON rev.user_id = u.id
-    {joins}
-    {where_clause}
-    GROUP BY u.id
-    ORDER BY contributions DESC
-    LIMIT ? OFFSET ?
-"""
+            SELECT u.id, u.username, u.is_ip, u.is_bot, u.is_blocked, 
+                COUNT(DISTINCT rev.id) AS contributions, from_article
+            FROM users u
+            {"JOIN revisions r ON r.user_id = u.id JOIN articles a ON a.id = r.article_id" if article_title else ""}
+            LEFT JOIN revisions rev ON rev.user_id = u.id
+            {f"AND rev.article_id = a.id" if article_title else ""}
+            {f"JOIN revisions rev2 ON rev2.user_id = u.id" if active_within_days else ""}
+            {f"WHERE {' AND '.join(filters)}" if filters else ""}
+            GROUP BY u.id
+            ORDER BY contributions DESC
+            LIMIT ? OFFSET ?
+            """
+
 
     cur = conn.cursor()
     return cur.execute(query, params).fetchall()
