@@ -25,11 +25,15 @@
             <tr>
                 <td>{{ u['id'] }}</td>
                 <td>
-                    <a href="https://fr.wikiscan.org/?menu=userstats&user={{ u['username'] }}" 
-                       target="_blank"
-                       rel="noopener noreferrer">
-                        {{ u['username'] }}
-                    </a>
+                    {% if u['username'] %}
+                        <a href="{{ url_for('user_infos', username=u['username']) }}"
+                            class="user-link"
+                            title="Voir l'utilisateur">
+                            {{ u['username'] }}
+                        </a>
+                    {% else %}
+                        <span class="anonymous">Anonyme</span>
+                    {% endif %}
                 </td>
                 <td>{{ '✓' if u['is_ip'] }}</td>
                 <td>{{ '✓' if u['is_bot'] }}</td>

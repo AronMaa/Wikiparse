@@ -71,10 +71,12 @@ def fetch_revisions_from_api(title):
             break
 
         for rev in pages[0]["revisions"]:
+            raw_timestamp = rev.get("timestamp")
+            clean_timestamp = raw_timestamp.replace('T', ' ').replace('Z', '') if raw_timestamp else None
             revisions.append({
                 "revision_id": rev.get("revid"),
                 "parent_id": rev.get("parentid"),
-                "timestamp": rev.get("timestamp"),
+                "timestamp": clean_timestamp,
                 "user": rev.get("user"),
                 "comment": rev.get("comment", ""),
                 'is_bot': 'bot' in rev.get('groups', [])

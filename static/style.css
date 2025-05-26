@@ -1,10 +1,17 @@
 body { font-family: Arial, sans-serif; margin: 20px; }
+
 nav a { margin-right: 10px; }
+
 .container { max-width: 800px; margin: auto; }
+
 table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+
 th, td { border: 1px solid #ccc; padding: 5px; text-align: left; }
+
 th { background-color: #f0f0f0; }
+
 .pagination { margin-top: 20px; }
+
 .pagination a { 
     padding: 5px 10px;
     border: 1px solid #ddd;
@@ -45,4 +52,203 @@ th { background-color: #f0f0f0; }
 }
 .global-search button {
     padding: 4px 8px;
+}
+
+.per-page-selector {
+    margin-bottom: 20px;
+}
+
+.pagination {
+    margin-top: 20px;
+    display: flex;
+    gap: 5px;
+}
+
+.pagination a, .pagination span {
+    padding: 5px 10px;
+    border: 1px solid #ddd;
+}
+
+.pagination .current-page {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+/* User revisions page */
+.username {
+    color: #0066cc;
+    font-weight: bold;
+}
+
+.per-page-selector {
+    margin: 20px 0;
+    padding: 10px;
+    background: #f5f5f5;
+    border-radius: 4px;
+}
+
+.per-page-selector select {
+    padding: 5px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+}
+
+.stats-summary {
+    margin-bottom: 15px;
+    font-style: italic;
+    color: #555;
+}
+
+.revision-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.revision-table th {
+    background-color: #f2f2f2;
+    padding: 10px;
+    text-align: left;
+}
+
+.revision-table td {
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+.revision-table tr:hover {
+    background-color: #f9f9f9;
+}
+
+.diff-link {
+    color: #0066cc;
+    text-decoration: none;
+}
+
+.diff-link:hover {
+    text-decoration: underline;
+}
+
+.no-diff {
+    color: #999;
+    font-style: italic;
+}
+
+.pagination {
+    margin-top: 20px;
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.pagination a, .pagination span {
+    padding: 5px 10px;
+    border: 1px solid #ddd;
+    text-decoration: none;
+    color: #0066cc;
+    border-radius: 3px;
+}
+
+.pagination a:hover {
+    background-color: #f5f5f5;
+}
+
+.pagination .current-page {
+    background-color: #0066cc;
+    color: white;
+    border-color: #0066cc;
+}
+
+/* User header */
+.user-header {
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.user-badges {
+    margin: 10px 0;
+}
+
+.badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 0.8em;
+    font-weight: bold;
+    margin-right: 5px;
+}
+
+.ip-badge {
+    background-color: #ffeb3b;
+    color: #000;
+}
+
+.bot-badge {
+    background-color: #4caf50;
+    color: white;
+}
+
+.blocked-badge {
+    background-color: #f44336;
+    color: white;
+}
+
+.user-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin: 15px 0;
+}
+
+.stat-item {
+    background: #f5f5f5;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.stat-label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.stat-value {
+    display: block;
+}
+
+/* Actions column */
+.actions {
+    display: flex;
+    gap: 10px;
+}
+
+.action-link {
+    text-decoration: none;
+    font-size: 1.2em;
+}
+
+/* Improved pagination */
+.pagination {
+    justify-content: center;
+}
+
+.user-link {
+    color: #0066cc;
+    text-decoration: none;
+}
+
+.user-link:hover {
+    text-decoration: underline;
+}
+
+.anonymous {
+    color: #666;
+    font-style: italic;
+}
+
+.no-diff {
+    color: #999;
+    font-style: italic;
 }

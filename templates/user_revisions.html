@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% block title %}Contributions de {{ user.username }}
+{% endblock %}
+{% block content %}
+<div class="user-header">
+    <h1>Contributions de 
+        <a href="https://fr.wikiscan.org/?menu=userstats&user={{ user.username|urlencode }}" 
+           target="_blank"
+           rel="noopener noreferrer"
+           class="username">
+            {{ user.username }}
+        </a>
+    </h1>
+    
+    <!-- User badges -->
+    <div class="user-badges">
+        {% if user.is_ip %}
+            <span class="badge ip-badge">IP</span>
+        {% endif %}
+        {% if user.is_bot %}
+            <span class="badge bot-badge">Bot</span>
+        {% endif %}
+        {% if user.is_blocked %}
+            <span class="badge blocked-badge">Bloqué</span>
+        {% endif %}
+    </div>
+    
+    <!-- User stats -->
+    <div class="user-stats">
+        <div class="stat-item">
+            <span class="stat-label">Total des contributions:</span>
+            <span class="stat-value">{{ total }}</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Articles modifiés:</span>
+            <span class="stat-value">{{ stats.edited_articles_count }}</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Première contribution:</span>
+            <span class="stat-value">{{ stats.first_edit }}</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Dernière contribution:</span>
+            <span class="stat-value">{{ stats.last_edit }}</span>
+        </div>
+    </div>
+</div>
+
+<!-- Revisions table -->
+<table class="revision-table">
+    <thead>
+        <tr>
+            <th>Article</th>
+            <th>Date</th>
+            <th>Commentaire</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for revision in revisions %}
+        <tr>
+            <td>
+                <a href="{{ url_for('article_detail', title=revision['article_title']) }}">
+                    {{ revision['article_title'] }}
+                </a>
+            </td>
+            <td>{{ revision['timestamp'] }}</td>
+            <td>{{ revision['comment'] or '<i>Aucun commentaire</i>'|safe }}</td>
+            <td class="actions">
+                <a href="https://fr.wikipedia.org/w/index.php?title={{ revision['article_title']|urlencode }}&oldid={{ revision['revision_id'] }}"
+                   target="_blank"
+                   class="action-link"
+                   title="Voir cette version">
+                    👁️
+                </a>
+                {% if revision['parent_id'] %}
+                <a href="https://fr.wikipedia.org/w/index.php?title={{ revision['article_title']|urlencode }}&diff={{ revision['revision_id'] }}&oldid={{ revision['parent_id'] }}"
+                   target="_blank" 
+                   class="action-link"
+                   title="Voir les modifications">
+                    🔍
+                </a>
+                {% endif %}
+            </td>
+        </tr>
+    {% else %}
+        <tr>
+            <td colspan="4">Aucune contribution trouvée</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

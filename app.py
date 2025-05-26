@@ -41,7 +41,7 @@ def index():
 @app.route('/article/<title>')
 def article_detail(title):
     page = request.args.get('page', 1, type=int)
-    per_page = 25
+    per_page = request.args.get('per_page', 25, type=int)
     try:
         conn = get_conn()
         revisions = fetch_revisions_db(conn, article_title=title, limit=per_page, page=page)
@@ -82,6 +82,77 @@ def users_list():
     except Exception as e:
         flash(f"Error loading users: {str(e)}", "error")
         return render_template('users.html', users=[], filters=request.args)
+    finally:
+        if conn: conn.close()
+
+@app.route('/users/<username>')
+def user_infos(username):    
+    try:
+        conn = get_conn()
+        cursor = conn.cursor()
+        
+        # Get user information
+        cursor.execute("""
+            SELECT id, username, is_ip, is_bot, is_blocked 
+            FROM users 
+            WHERE username = ?
+        """, (username,))
+        user = cursor.fetchone()
+        
+        if not user:
+            flash(f"Utilisateur {username} non trouvé", "error")
+            return redirect(url_for('index'))
+        
+        # Get user revisions
+        cursor.execute("""
+            SELECT r.revision_id, r.parent_id, r.timestamp, r.comment, 
+                   a.title as article_title, u.username
+            FROM revisions r
+            JOIN articles a ON a.id = r.article_id
+            JOIN users u ON u.id = r.user_id
+            WHERE u.username = ?
+            ORDER BY r.timestamp DESC
+        """, (username,))  # Fixed missing comma here
+        revisions = [dict(row) for row in cursor.fetchall()]
+        
+        # Get total count
+        cursor.execute("""
+            SELECT COUNT(*) 
+            FROM revisions r
+            JOIN users u ON u.id = r.user_id
+            WHERE u.username = ?
+        """, (username,))
+        total = cursor.fetchone()[0]
+        
+        # Get user statistics
+        cursor.execute("""
+            SELECT COUNT(DISTINCT article_id) as edited_articles_count,
+                   MIN(timestamp) as first_edit,
+                   MAX(timestamp) as last_edit
+            FROM revisions
+            WHERE user_id = ?
+        """, (user['id'],))
+        stats = dict(cursor.fetchone())
+        
+        return render_template('user_revisions.html', 
+                            user=dict(user),
+                            revisions=revisions,
+                            stats=stats,
+                            total=total)
+        
+    except Exception as e:
+        flash(f"Erreur lors du chargement des contributions: {str(e)}", "error")
+        # Provide default stats in case of error
+        default_stats = {
+            'edited_articles_count': 0,
+            'first_edit': None,
+            'last_edit': None
+        }
+        return render_template('user_revisions.html', 
+                            user={'username': username},
+                            revisions=[],
+                            stats=default_stats,
+                            total=0)
     finally:
         if conn: conn.close()
 
