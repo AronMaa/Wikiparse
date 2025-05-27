@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, url_for, redirect, flash, session
+from flask import Flask, abort, render_template, request, url_for, redirect, flash, session
 from flask_bcrypt import Bcrypt
 from functools import wraps
 import sqlite3
@@ -6,11 +6,39 @@ import atexit
 from apscheduler.schedulers.background import BackgroundScheduler
 from populate import init_db, fetch_revisions_from_api, update_database
 from queries import count_users, fetch_users, fetch_revisions_db, fetch_articles
+import re
+from itsdangerous import URLSafeTimedSerializer
 
 app = Flask(__name__)
 app.secret_key = 'L0n6 D4y!'
 DB_PATH = "wikipedia.db"
 bcrypt = Bcrypt(app)
+
+serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
+
+def first_admin():
+    """Ensure at least one admin exists in the system"""
+    conn = get_conn()
+    try:
+        cursor = conn.cursor()
+        # Check if any admin exists
+        cursor.execute("SELECT id FROM auth_users WHERE is_approved = 1 LIMIT 1")
+        admin_exists = cursor.fetchone()
+        
+        if not admin_exists:
+            hashed_pw = bcrypt.generate_password_hash('Password123').decode('utf-8')
+            cursor.execute("""
+                INSERT OR IGNORE INTO auth_users (
+                    username, password, is_approved
+                ) VALUES (?, ?, ?)
+                """, ('admin', hashed_pw, True))
+            conn.commit()
+            print("Created initial admin user")
+    except sqlite3.Error as e:
+        print(f"Database error during admin check: {str(e)}")
+    finally:
+        if conn:
+            conn.close()
 
 def get_conn():
     """Get database connection with error handling"""
@@ -60,6 +88,15 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('is_approved'):
+            flash('Admin access required', 'error')
+            return redirect(url_for('index'))
+        return f(*args, **kwargs)
+    return decorated_function
+
 @app.route('/')
 @login_required
 def index():
@@ -86,24 +123,41 @@ def register():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        email = request.form.get('email', '')
 
-        if not username or not password:
-            flash('Username and password are required', 'error')
+        # Validation
+        if not all([username, password]):
+            flash('All fields are required', 'error')
             return redirect(url_for('register'))
 
         conn = get_conn()
         try:
+            # Check if any admin exists to approve users
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM auth_users WHERE is_approved = 1 LIMIT 1")
+            admin_exists = cursor.fetchone()
+            
+            if not admin_exists:
+                flash('System not ready for registrations - no admin available to approve accounts', 'error')
+                return redirect(url_for('register'))
+
             hashed_pw = bcrypt.generate_password_hash(password).decode('utf-8')
-            conn.execute(
-                "INSERT INTO auth_users (username, password, email) VALUES (?, ?, ?)",
-                (username, hashed_pw, email)
+            cursor.execute(
+                """INSERT INTO auth_users 
+                (username, password, is_approved) 
+                VALUES (?, ?, ?)""",
+                (username, hashed_pw, 0)
             )
             conn.commit()
-            flash('Registration successful! Please log in.', 'success')
+            
+            flash('Registration successful! Waiting for approval', 'success')
             return redirect(url_for('login'))
+            
+        except sqlite3.IntegrityError:
+            conn.rollback()
+            flash('Username already exists', 'error')
         except Exception as e:
-            flash(e, 'error')
+            conn.rollback()
+            flash(f'Registration error: {str(e)}', 'error')
         finally:
             conn.close()
 
@@ -125,6 +179,7 @@ def login():
             if user and bcrypt.check_password_hash(user['password'], password):
                 session['user_id'] = user['id']
                 session['username'] = user['username']
+                session['is_approved'] = bool(user['is_approved'])
                 flash('Login successful!', 'success')
                 next_page = request.args.get('next')
                 return redirect(next_page or url_for('index'))
@@ -140,6 +195,127 @@ def logout():
     session.clear()
     flash('You have been logged out', 'success')
     return redirect(url_for('index'))
+
+@app.route('/admin')
+@login_required
+@admin_required
+def admin_dashboard():
+    conn = get_conn()
+    try:
+        pending_users = conn.execute(
+            "SELECT * FROM auth_users WHERE is_approved = 0"
+        ).fetchall()
+        all_users = conn.execute(
+            "SELECT * FROM auth_users ORDER BY is_approved DESC, username"
+        ).fetchall()
+        articles = conn.execute("SELECT * FROM articles").fetchall()
+        
+        return render_template('admin.html', 
+                             pending_users=pending_users,
+                             all_users=all_users,
+                             articles=articles)
+    finally:
+        conn.close()
+
+@app.route('/admin/approve-user/<int:user_id>')
+@login_required
+@admin_required
+def approve_user(user_id):
+    conn = get_conn()
+    try:
+        # Check if user exists
+        user = conn.execute(
+            "SELECT * FROM auth_users WHERE id = ?", 
+            (user_id,)
+        ).fetchone()
+        
+        if not user:
+            flash('User not found', 'error')
+            return redirect(url_for('admin_dashboard'))
+            
+        conn.execute(
+            "UPDATE auth_users SET is_approved = 1 WHERE id = ?", 
+            (user_id,)
+        )
+        conn.commit()
+        flash(f'User {user["username"]} approved', 'success')
+    except Exception as e:
+        conn.rollback()
+        flash(f'Error approving user: {str(e)}', 'error')
+    finally:
+        conn.close()
+    
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/reject-user/<int:user_id>')
+@login_required
+@admin_required
+def reject_user(user_id):
+    conn = get_conn()
+    try:
+        # Check if user exists
+        user = conn.execute(
+            "SELECT * FROM auth_users WHERE id = ?", 
+            (user_id,)
+        ).fetchone()
+        
+        if not user:
+            flash('User not found', 'error')
+            return redirect(url_for('admin_dashboard'))
+            
+        conn.execute(
+            "DELETE FROM auth_users WHERE id = ?", 
+            (user_id,)
+        )
+        conn.commit()
+        flash(f'User {user["username"]} rejected and removed', 'success')
+    except Exception as e:
+        conn.rollback()
+        flash(f'Error rejecting user: {str(e)}', 'error')
+    finally:
+        conn.close()
+    
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/analytics')
+@login_required
+@admin_required
+def admin_analytics():
+    return render_template('admin_analytics.html')
+
+@app.route('/admin/toggle-admin/<int:user_id>')
+@login_required
+@admin_required
+def toggle_admin(user_id):
+    if user_id == session['user_id']:
+        flash("You can't change your own admin status", 'error')
+        return redirect(url_for('admin_dashboard'))
+    
+    conn = get_conn()
+    try:
+        user = conn.execute(
+            "SELECT * FROM auth_users WHERE id = ?", 
+            (user_id,)
+        ).fetchone()
+        
+        if not user:
+            flash('User not found', 'error')
+            return redirect(url_for('admin_dashboard'))
+            
+        conn.execute(
+            "UPDATE auth_users SET is_approved = NOT is_approved WHERE id = ?",
+            (user_id,)
+        )
+        conn.commit()
+        action = "granted" if not user['is_approved'] else "revoked"
+        flash(f'Admin privileges {action} for {user["username"]}', 'success')
+    except Exception as e:
+        conn.rollback()
+        flash(f'Error updating admin status: {str(e)}', 'error')
+    finally:
+        conn.close()
+    
+    return redirect(url_for('admin_dashboard'))
 
 @app.route('/articles')
 @login_required
@@ -453,4 +629,8 @@ def search():
 
 if __name__ == '__main__':
     init_db(DB_PATH)
+    try:
+        first_admin()
+    except Exception as e:
+        print(f"Error creating admin user: {e}")
     app.run(debug=True)

@@ -33,32 +33,19 @@
                 <i class="fas fa-users"></i>
                 <span>Utilisateurs</span>
             </a>
-            <a href="{{ url_for('populate_db') }}" class="nav-link">
-                <i class="fas fa-database"></i>
-                <span>Peupler DB</span>
-            </a>
             <a href="{{ url_for('populate_schedule') }}" class="nav-link">
                 <i class="fas fa-calendar-alt"></i>
-                <span>Planifier</span>
+                <span>Peuplement</span>
             </a>
         </div>
         {% if 'user_id' in session %}
-            <span class="nav-link">
+            <a href="{{ url_for('admin_dashboard') }}" class="nav-link">
                 <i class="fas fa-user"></i>
                 <span>{{ session['username'] }}</span>
-            </span>
+            </a>
             <a href="{{ url_for('logout') }}" class="nav-link">
                 <i class="fas fa-sign-out-alt"></i>
                 <span>Logout</span>
-            </a>
-        {% else %}
-            <a href="{{ url_for('login') }}" class="nav-link">
-                <i class="fas fa-sign-in-alt"></i>
-                <span>Login</span>
-            </a>
-            <a href="{{ url_for('register') }}" class="nav-link">
-                <i class="fas fa-user-plus"></i>
-                <span>Register</span>
             </a>
         {% endif %}
         <form action="{{ url_for('search') }}" method="get" class="global-search" role="search">

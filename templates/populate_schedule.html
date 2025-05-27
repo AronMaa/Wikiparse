@@ -1,6 +1,12 @@
 {% extends 'base.html' %}
 {% block title %}Scheduled Population{% endblock %}
 {% block content %}
+<a href="{{ url_for('populate_db') }}" class="nav-link">
+    <button>
+        <i class="fas fa-database"></i>
+        Peuplement manuel
+    </button>
+</a>
 <h1>Scheduled Database Population</h1>
 
 <div class="card">

@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="admin-nav">
+    <a href="{{ url_for('admin_dashboard') }}" class="btn-admin">User Management</a>
+    <a href="{{ url_for('admin_analytics') }}" class="btn-admin">Analytics Dashboard</a>
+</div>
+
+<div class="admin-container">
+    <section class="pending-users">
+        {% if pending_users %}
+        <h2>Requêtes en attente ({{ pending_users|length }})</h2>
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Nom</th>
+                    <th>Enregistrement</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in pending_users %}
+                <tr>
+                    <td>{{ user.username }}</td>
+                    <td>{{ user.created_at }}</td>
+                    <td class="actions">
+                        <a href="{{ url_for('approve_user', user_id=user.id) }}" 
+                           class="btn-approve">Approve</a>
+                        <a href="{{ url_for('reject_user', user_id=user.id) }}" 
+                           class="btn-reject">Reject</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </section>
+
+    <section class="approved-users">
+        <h2>Liste des Utilisateurs</h2>
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Nom</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in all_users %}
+                <tr>
+                    <td>{{ user.username }}</td>
+                    <td>{{ 'Approved' if user.is_approved else 'Pending' }}</td>
+                    <td class="actions">
+                        {% if not user.is_approved %}
+                        <a href="{{ url_for('toggle_admin', user_id=user.id) }}" 
+                           class="btn-approve">Approve</a>
+                        {% else %}
+                        <a href="{{ url_for('toggle_admin', user_id=user.id) }}" 
+                           class="btn-reject">Reject</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+</div>
+
+<style>
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+.admin-table th, .admin-table td {
+    padding: 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+.actions {
+    white-space: nowrap;
+}
+.btn-approve {
+    background-color: #28a745;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    text-decoration: none;
+    margin-right: 5px;
+}
+.btn-reject {
+    background-color: #dc3545;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    text-decoration: none;
+}
+.btn-admin {
+    background-color: #17a2b8;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    text-decoration: none;
+}
+</style>
+{% endblock %}

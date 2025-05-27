@@ -1,6 +1,5 @@
 import sqlite3
 import requests
-from datetime import datetime
 import ipaddress
 
 API_URL = "https://fr.wikipedia.org/w/api.php"
@@ -43,6 +42,14 @@ def init_db(db_path):
         interval_hours INTEGER DEFAULT 24,
         last_populated TEXT,
         is_active INTEGER DEFAULT 1
+    );
+                         
+    CREATE TABLE IF NOT EXISTS auth_users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        is_approved BOOLEAN DEFAULT 0
     );
     """)
 

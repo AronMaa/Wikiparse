@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="analytics-container">
+    <h1>Advanced Analytics Dashboard</h1>
+    <div class="dashboard-embed">
+        <iframe src="http://localhost:8501" width="100%" height="800" frameborder="0"></iframe>
+    </div>
+    <p class="note">Note: The analytics dashboard requires Streamlit to be running on port 8501</p>
+</div>
+
+<style>
+.analytics-container {
+    padding: 20px;
+}
+.dashboard-embed {
+    margin: 20px 0;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    overflow: hidden;
+}
+.note {
+    color: #666;
+    font-style: italic;
+}
+</style>
+{% endblock %}
