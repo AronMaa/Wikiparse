@@ -1,4 +1,6 @@
-from flask import Flask, render_template, request, url_for, redirect, flash
+from flask import Flask, render_template, request, url_for, redirect, flash, session
+from flask_bcrypt import Bcrypt
+from functools import wraps
 import sqlite3
 import atexit
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -6,8 +8,9 @@ from populate import init_db, fetch_revisions_from_api, update_database
 from queries import count_users, fetch_users, fetch_revisions_db, fetch_articles
 
 app = Flask(__name__)
-app.secret_key = 'supersecretkey'  # In production, use proper secret management
+app.secret_key = 'L0n6 D4y!'
 DB_PATH = "wikipedia.db"
+bcrypt = Bcrypt(app)
 
 def get_conn():
     """Get database connection with error handling"""
@@ -42,13 +45,23 @@ def check_scheduled_population():
 
 # Initialize scheduler
 scheduler = BackgroundScheduler()
-scheduler.add_job(check_scheduled_population, 'interval', minutes=30)
+scheduler.add_job(check_scheduled_population, 'interval', minutes=60)
 scheduler.start()
 
 # Shut down the scheduler when exiting the app
 atexit.register(lambda: scheduler.shutdown())
 
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Please log in to access this page', 'error')
+            return redirect(url_for('login', next=request.url))
+        return f(*args, **kwargs)
+    return decorated_function
+
 @app.route('/')
+@login_required
 def index():
     """Homepage with article list"""
     try:
@@ -68,7 +81,68 @@ def index():
     finally:
         if conn: conn.close()
 
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        email = request.form.get('email', '')
+
+        if not username or not password:
+            flash('Username and password are required', 'error')
+            return redirect(url_for('register'))
+
+        conn = get_conn()
+        try:
+            hashed_pw = bcrypt.generate_password_hash(password).decode('utf-8')
+            conn.execute(
+                "INSERT INTO auth_users (username, password, email) VALUES (?, ?, ?)",
+                (username, hashed_pw, email)
+            )
+            conn.commit()
+            flash('Registration successful! Please log in.', 'success')
+            return redirect(url_for('login'))
+        except Exception as e:
+            flash(e, 'error')
+        finally:
+            conn.close()
+
+    return render_template('register.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+
+        conn = get_conn()
+        try:
+            user = conn.execute(
+                "SELECT * FROM auth_users WHERE username = ?",
+                (username,)
+            ).fetchone()
+
+            if user and bcrypt.check_password_hash(user['password'], password):
+                session['user_id'] = user['id']
+                session['username'] = user['username']
+                flash('Login successful!', 'success')
+                next_page = request.args.get('next')
+                return redirect(next_page or url_for('index'))
+            else:
+                flash('Invalid username or password', 'error')
+        finally:
+            conn.close()
+
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('You have been logged out', 'success')
+    return redirect(url_for('index'))
+
 @app.route('/articles')
+@login_required
 def articles():
     """Article list with precisions"""
     page = request.args.get('page', 1, type=int)
@@ -91,6 +165,7 @@ def articles():
         if conn: conn.close()
 
 @app.route('/articles/<title>')
+@login_required
 def article_detail(title):
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 25, type=int)
@@ -118,6 +193,7 @@ def article_detail(title):
         if conn: conn.close()
 
 @app.route('/users')
+@login_required
 def users_list():
     """Filterable user list with pagination"""
     try:
@@ -178,6 +254,7 @@ def users_list():
         if conn: conn.close()
 
 @app.route('/users/<username>')
+@login_required
 def user_infos(username):    
     try:
         conn = get_conn()
@@ -256,6 +333,7 @@ def user_infos(username):
         if conn: conn.close()
         
 @app.route('/populate', methods=['GET', 'POST'])
+@login_required
 def populate_db():
     """Database population endpoint"""
     if request.method == 'POST':
@@ -283,6 +361,7 @@ def populate_db():
     return render_template('populate.html')
 
 @app.route('/populate/schedule', methods=['GET', 'POST'])
+@login_required
 def populate_schedule():
     conn = get_conn()
     try:
@@ -339,6 +418,7 @@ def populate_article_now(title):
         conn.close()
 
 @app.route('/search')
+@login_required
 def search():
     query = request.args.get('q', '').strip().lower()
     if not query:

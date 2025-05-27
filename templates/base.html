@@ -2,32 +2,112 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="WikiApp - Gestion des articles Wikipédia">
     <title>{% block title %}WikiApp{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    <nav>
-        <a href="{{ url_for('index') }}">Home</a> |
-        <a href="{{ url_for('articles') }}">Articles</a> |
-        <a href="{{ url_for('users_list') }}">Utilisateurs</a> |
-        <a href="{{ url_for('populate_db') }}">Peupler DB</a>
-        <a href="{{ url_for('populate_schedule') }}">Planifier</a>
-    </nav>
-    <form action="{{ url_for('search') }}" method="get" class="global-search">
-    <input type="text" name="q" placeholder="Rechercher un article ou un utilisateur…" required>
-    <button type="submit">🔍</button>
-</form>
+    <!-- Mobile Menu Button -->
+    <button class="mobile-menu-button" aria-label="Toggle menu">
+        <i class="fas fa-bars"></i>
+    </button>
 
-    <hr>
-    <div class="container">
+    <nav class="main-nav">
+        <div class="nav-brand">
+            <i class="fas fa-book-open"></i>
+            <span>WikiApp</span>
+        </div>
+        <div class="nav-links">
+            <a href="{{ url_for('index') }}" class="nav-link">
+                <i class="fas fa-home"></i>
+                <span>Accueil</span>
+            </a>
+            <a href="{{ url_for('articles') }}" class="nav-link">
+                <i class="fas fa-file-alt"></i>
+                <span>Articles</span>
+            </a>
+            <a href="{{ url_for('users_list') }}" class="nav-link">
+                <i class="fas fa-users"></i>
+                <span>Utilisateurs</span>
+            </a>
+            <a href="{{ url_for('populate_db') }}" class="nav-link">
+                <i class="fas fa-database"></i>
+                <span>Peupler DB</span>
+            </a>
+            <a href="{{ url_for('populate_schedule') }}" class="nav-link">
+                <i class="fas fa-calendar-alt"></i>
+                <span>Planifier</span>
+            </a>
+        </div>
+        {% if 'user_id' in session %}
+            <span class="nav-link">
+                <i class="fas fa-user"></i>
+                <span>{{ session['username'] }}</span>
+            </span>
+            <a href="{{ url_for('logout') }}" class="nav-link">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
+            </a>
+        {% else %}
+            <a href="{{ url_for('login') }}" class="nav-link">
+                <i class="fas fa-sign-in-alt"></i>
+                <span>Login</span>
+            </a>
+            <a href="{{ url_for('register') }}" class="nav-link">
+                <i class="fas fa-user-plus"></i>
+                <span>Register</span>
+            </a>
+        {% endif %}
+        <form action="{{ url_for('search') }}" method="get" class="global-search" role="search">
+            <input type="text" name="q" placeholder="Rechercher..." aria-label="Search" required>
+            <button type="submit" aria-label="Search">
+                <i class="fas fa-search"></i>
+            </button>
+        </form>
+    </nav>
+
+    <main class="container">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">{{ message }}</div>
-                {% endfor %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash flash-{{ category }}" role="alert">
+                            <i class="flash-icon fas 
+                                {% if category == 'success' %}fa-check-circle
+                                {% elif category == 'error' %}fa-exclamation-circle
+                                {% else %}fa-info-circle{% endif %}"></i>
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
             {% endif %}
         {% endwith %}
+        
         {% block content %}{% endblock %}
-    </div>
+    </main>
+
+    <script>
+        // Mobile menu toggle
+        document.querySelector('.mobile-menu-button').addEventListener('click', () => {
+            document.querySelector('.main-nav').classList.toggle('mobile-visible');
+        });
+        
+        // Loading skeletons
+        function showLoadingSkeleton(container) {
+            const skeleton = document.createElement('div');
+            skeleton.className = 'skeleton-loader';
+            skeleton.innerHTML = `
+                <div class="skeleton-header"></div>
+                <div class="skeleton-line"></div>
+                <div class="skeleton-line"></div>
+                <div class="skeleton-line"></div>
+            `;
+            container.appendChild(skeleton);
+            return skeleton;
+        }
+    </script>
 </body>
 </html>
