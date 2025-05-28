@@ -1,12 +1,10 @@
 {% extends 'base.html' %}
 {% block title %}Peupler la base{% endblock %}
 {% block content %}
-<a href="{{ url_for('populate_schedule') }}" class="nav-link">
-    <button>
-        <i class="fas fa-calendar-alt"></i>
-        Peuplement planifié
-    </button>
-</a>
+<button href="{{ url_for('populate_schedule') }}">
+    <i class="fas fa-calendar-alt"></i>
+    Peuplement planifié
+</button>
 
 <h1>Peupler la base de données</h1>
 
@@ -14,4 +12,47 @@
     <label>Titre de l'article Wikipédia: <input type="text" name="article" required></label>
     <button type="submit">Charger</button>
 </form>
+
+<!-- LOADING SCREEN >
+<div id="loading-overlay">
+    <div class="spinner"></div>
+    <p>Chargement en cours…</p>
+</div>
+
+<style>
+#loading-overlay {
+    display :none;
+    width: 100%;
+    height: 100%;
+    background: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Arial', sans-serif;
+    color: #444;
+}
+
+.spinner {
+    border: 10px solid #f3f3f3;
+    border-top: 10px solid #b51010;
+    border-radius: 50%;
+    width: 100px;
+    height: 80px;
+    animation: spin 0.6s linear infinite;
+    margin-bottom: 1em;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>
+
+<script>
+    document.querySelector('form').addEventListener('submit', function (e) {
+    document.getElementById('loading-overlay').style.display = 'flex';
+});
+</script-->
+
 {% endblock %}

@@ -283,6 +283,30 @@ def reject_user(user_id):
 def admin_analytics():
     return render_template('admin_analytics.html')
 
+@app.route('/admin/debug-db')
+@login_required
+@admin_required
+def debug_database():
+    try:
+        conn = get_conn()
+        # Attempt a basic write query to check for locks
+        conn.execute("PRAGMA journal_mode = WAL;")  # Optional: improve concurrency
+        conn.execute("VACUUM;")                     # Optional: compact database
+        conn.commit()
+        flash("Database debug completed successfully. No locks detected.", "success")
+    except sqlite3.OperationalError as e:
+        if "locked" in str(e).lower():
+            flash("Database is locked. Try again later or restart the app.", "error")
+        else:
+            flash(f"Database error: {str(e)}", "error")
+    except Exception as e:
+        flash(f"Unexpected error: {str(e)}", "error")
+    finally:
+        if conn:
+            conn.close()
+
+    return redirect(url_for('admin_dashboard'))
+
 @app.route('/admin/toggle-admin/<int:user_id>')
 @login_required
 @admin_required
