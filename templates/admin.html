@@ -1,10 +1,10 @@
-{% extends 'base.html' %}
+{% extends 'index.html' %}
 {% block content %}
 <div class="admin-nav">
     <a href="{{ url_for('admin_dashboard') }}" class="btn-admin">Gestion des Utilisateurs</a>
     <a href="{{ url_for('admin_analytics') }}" class="btn-admin">Dashboard Analytique</a>
-    <a href="{{ url_for('debug_database') }}" class="btn btn-danger">
-    <i class="fas fa-bug"></i> Debugger la base de données
+    <a href="{{ url_for('debug_database') }}" class="btn-danger">
+    <i class="fas fa-bug"></i> Débugger la base de données
 </a>
 </div>
 
@@ -26,7 +26,7 @@
                     <td>{{ user.username }}</td>
                     <td>{{ user.created_at }}</td>
                     <td class="actions">
-                        <a href="{{ url_for('approve_user', user_id=user.id) }}" 
+                        <a href="{{ url_for('toggle_user', user_id=user.id) }}" 
                            class="btn-approve">Approve</a>
                         <a href="{{ url_for('reject_user', user_id=user.id) }}" 
                            class="btn-reject">Reject</a>
@@ -45,6 +45,7 @@
                 <tr>
                     <th>Nom</th>
                     <th>Status</th>
+                    <th>Role</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -52,14 +53,21 @@
                 {% for user in all_users %}
                 <tr>
                     <td>{{ user.username }}</td>
-                    <td>{{ 'Approved' if user.is_approved else 'Pending' }}</td>
+                    <td>{{ 'Approuvé' if user.is_approved else 'En attente' }}</td>
+                    <td>{{ 'Admin' if user.is_admin else 'Utilisateur' }}</td>
                     <td class="actions">
                         {% if not user.is_approved %}
-                        <a href="{{ url_for('toggle_admin', user_id=user.id) }}" 
-                           class="btn-approve">Approve</a>
+                        <a href="{{ url_for('toggle_user', user_id=user.id) }}" 
+                        class="btn-approve">Approuver</a>
                         {% else %}
                         <a href="{{ url_for('toggle_admin', user_id=user.id) }}" 
-                           class="btn-reject">Reject</a>
+                        class="btn-{% if user.is_admin %}reject{% else %}approve{% endif %}">
+                            {% if user.is_admin %}Retirer des Admins{% else %}Rendre Admin{% endif %}
+                        </a>
+                        {% endif %}
+                        {% if not user.is_admin %}
+                        <a href="{{ url_for('toggle_user', user_id=user.id) }}" 
+                           class="btn-reject">Retirer des admis</a>
                         {% endif %}
                     </td>
                 </tr>
@@ -100,6 +108,13 @@
 }
 .btn-admin {
     background-color: #17a2b8;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    text-decoration: none;
+}
+.btn-danger {
+    background-color: #dc3545;
     color: white;
     padding: 5px 10px;
     border-radius: 4px;

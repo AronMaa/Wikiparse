@@ -22,16 +22,16 @@ def first_admin():
     try:
         cursor = conn.cursor()
         # Check if any admin exists
-        cursor.execute("SELECT id FROM auth_users WHERE is_approved = 1 LIMIT 1")
+        cursor.execute("SELECT id FROM auth_users WHERE is_admin = 1 LIMIT 1")
         admin_exists = cursor.fetchone()
         
         if not admin_exists:
             hashed_pw = bcrypt.generate_password_hash('Password123').decode('utf-8')
             cursor.execute("""
                 INSERT OR IGNORE INTO auth_users (
-                    username, password, is_approved
-                ) VALUES (?, ?, ?)
-                """, ('admin', hashed_pw, True))
+                    username, password, is_approved, is_admin
+                ) VALUES (?, ?, ?, ?)
+                """, ('admin', hashed_pw, True, True))
             conn.commit()
             print("Created initial admin user")
     except sqlite3.Error as e:
@@ -88,10 +88,19 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def admin_required(f):
+def approved_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not session.get('is_approved'):
+            flash('Approved access required', 'error')
+            return redirect(url_for('index'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('is_admin'):
             flash('Admin access required', 'error')
             return redirect(url_for('index'))
         return f(*args, **kwargs)
@@ -143,9 +152,9 @@ def register():
             hashed_pw = bcrypt.generate_password_hash(password).decode('utf-8')
             cursor.execute(
                 """INSERT INTO auth_users 
-                (username, password, is_approved) 
-                VALUES (?, ?, ?)""",
-                (username, hashed_pw, 0)
+                (username, password, is_approved, is_admin) 
+                VALUES (?, ?, ?, ?)""",
+                (username, hashed_pw, 0, 0)
             )
             conn.commit()
             
@@ -177,9 +186,14 @@ def login():
             ).fetchone()
 
             if user and bcrypt.check_password_hash(user['password'], password):
+                if not user['is_approved']:
+                    flash('Your account is pending approval', 'error')
+                    return redirect(url_for('login'))
+                
                 session['user_id'] = user['id']
                 session['username'] = user['username']
-                session['is_approved'] = bool(user['is_approved'])
+                session['is_admin'] = user['is_admin']
+                session['is_approved'] = user['is_approved']
                 flash('Login successful!', 'success')
                 next_page = request.args.get('next')
                 return redirect(next_page or url_for('index'))
@@ -198,6 +212,7 @@ def logout():
 
 @app.route('/admin')
 @login_required
+@approved_required
 @admin_required
 def admin_dashboard():
     conn = get_conn()
@@ -217,10 +232,11 @@ def admin_dashboard():
     finally:
         conn.close()
 
-@app.route('/admin/approve-user/<int:user_id>')
+@app.route('/admin/toggle-user/<int:user_id>')
 @login_required
+@approved_required
 @admin_required
-def approve_user(user_id):
+def toggle_user(user_id):
     conn = get_conn()
     try:
         # Check if user exists
@@ -234,14 +250,17 @@ def approve_user(user_id):
             return redirect(url_for('admin_dashboard'))
             
         conn.execute(
-            "UPDATE auth_users SET is_approved = 1 WHERE id = ?", 
+            "UPDATE auth_users SET is_approved = NOT is_approved WHERE id = ?", 
             (user_id,)
         )
         conn.commit()
-        flash(f'User {user["username"]} approved', 'success')
+        action = "Granted Access to" if not user['is_approved'] else "Revoked Access to"
+        action2 = "approved" if not user['is_approved'] else "rejected"
+        flash(f'{action} {user["username"]}', 'success')
+        flash(f'User {user["username"]} {action2}', 'success')
     except Exception as e:
         conn.rollback()
-        flash(f'Error approving user: {str(e)}', 'error')
+        flash(f'Error updating user: {str(e)}', 'error')
     finally:
         conn.close()
     
@@ -249,6 +268,7 @@ def approve_user(user_id):
 
 @app.route('/admin/reject-user/<int:user_id>')
 @login_required
+@approved_required
 @admin_required
 def reject_user(user_id):
     conn = get_conn()
@@ -279,12 +299,14 @@ def reject_user(user_id):
 
 @app.route('/admin/analytics')
 @login_required
+@approved_required
 @admin_required
 def admin_analytics():
     return render_template('admin_analytics.html')
 
 @app.route('/admin/debug-db')
 @login_required
+@approved_required
 @admin_required
 def debug_database():
     try:
@@ -309,6 +331,7 @@ def debug_database():
 
 @app.route('/admin/toggle-admin/<int:user_id>')
 @login_required
+@approved_required
 @admin_required
 def toggle_admin(user_id):
     if user_id == session['user_id']:
@@ -326,13 +349,17 @@ def toggle_admin(user_id):
             flash('User not found', 'error')
             return redirect(url_for('admin_dashboard'))
             
+        if not user['is_approved']:
+            flash('User must be approved first', 'error')
+            return redirect(url_for('admin_dashboard'))
+            
         conn.execute(
-            "UPDATE auth_users SET is_approved = NOT is_approved WHERE id = ?",
+            "UPDATE auth_users SET is_admin = NOT is_admin WHERE id = ?",
             (user_id,)
         )
         conn.commit()
-        action = "granted" if not user['is_approved'] else "revoked"
-        flash(f'Admin privileges {action} for {user["username"]}', 'success')
+        action = "Granted Admin Privileges to" if not user['is_admin'] else "Revoked Admin Privileges from"
+        flash(f'{action} {user["username"]}', 'success')
     except Exception as e:
         conn.rollback()
         flash(f'Error updating admin status: {str(e)}', 'error')
@@ -343,6 +370,7 @@ def toggle_admin(user_id):
 
 @app.route('/articles')
 @login_required
+@approved_required
 def articles():
     """Article list with precisions"""
     page = request.args.get('page', 1, type=int)
@@ -366,6 +394,7 @@ def articles():
 
 @app.route('/articles/<title>')
 @login_required
+@approved_required
 def article_detail(title):
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 25, type=int)
@@ -394,6 +423,7 @@ def article_detail(title):
 
 @app.route('/users')
 @login_required
+@approved_required
 def users_list():
     """Filterable user list with pagination"""
     try:
@@ -455,6 +485,7 @@ def users_list():
 
 @app.route('/users/<username>')
 @login_required
+@approved_required
 def user_infos(username):    
     try:
         conn = get_conn()
@@ -534,6 +565,7 @@ def user_infos(username):
         
 @app.route('/populate', methods=['GET', 'POST'])
 @login_required
+@approved_required
 def populate_db():
     """Database population endpoint"""
     if request.method == 'POST':
@@ -562,6 +594,7 @@ def populate_db():
 
 @app.route('/populate/schedule', methods=['GET', 'POST'])
 @login_required
+@approved_required
 def populate_schedule():
     conn = get_conn()
     try:
@@ -619,6 +652,7 @@ def populate_article_now(title):
 
 @app.route('/search')
 @login_required
+@approved_required
 def search():
     query = request.args.get('q', '').strip().lower()
     if not query:

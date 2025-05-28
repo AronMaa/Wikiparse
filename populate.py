@@ -49,7 +49,8 @@ def init_db(db_path):
         username TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        is_approved BOOLEAN DEFAULT 0
+        is_approved BOOLEAN DEFAULT 0,
+        is_admin BOOLEAN DEFAULT 0
     );
     """)
 
@@ -108,6 +109,17 @@ def fetch_revisions_from_api(title):
 def get_user_info(username):
     """Récupère bot/ip/bloqué via API ou détection IP"""
     print(f"[get_user_info] Analyse de {username}")
+    
+    # Handle None or empty username
+    if not username:
+        return {'is_ip': False, 'is_bot': False, 'is_blocked': False}
+
+    # First try IP detection
+    try:
+        ipaddress.ip_address(username)
+        return {'is_ip': True, 'is_bot': False, 'is_blocked': False}
+    except ValueError:
+        pass  # Not an IP address
 
     api_url = "https://fr.wikipedia.org/w/api.php"
     params = {
@@ -117,27 +129,33 @@ def get_user_info(username):
         'usprop': 'groups|blockinfo',
         'format': 'json'
     }
-    resp = requests.get(api_url, params=params, timeout=10)
-    resp.raise_for_status()
-    user = resp.json().get('query', {}).get('users', [{}])[0]
-
-    # utilisateurs manquants ou invalides
-    if user.get('missing') or user.get('invalid'):
+    
+    try:
+        resp = requests.get(api_url, params=params, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+        
+        # Handle case where API returns no users
+        users = data.get('query', {}).get('users', [])
+        if not users:
+            return {'is_ip': False, 'is_bot': False, 'is_blocked': False}
+            
+        user = users[0]
+        
+        # Handle missing or invalid users
+        if user.get('missing') or user.get('invalid'):
+            return {'is_ip': False, 'is_bot': False, 'is_blocked': False}
+        
+        return {
+            'is_ip': False,
+            'is_bot': 'bot' in user.get('groups', []) or username.lower().endswith('bot'),
+            'is_blocked': 'blockid' in user
+        }
+        
+    except Exception as e:
+        print(f"[get_user_info] Error fetching user info: {str(e)}")
         return {'is_ip': False, 'is_bot': False, 'is_blocked': False}
     
-    # détection IP
-    try:
-        ipaddress.ip_address(username)
-        return {'is_ip': True, 'is_bot': False, 'is_blocked': 'blockid' in user}
-    except ValueError:
-        pass
-
-    return {
-        'is_ip': False,
-        'is_bot': 'bot' in user.get('groups', [])or 'bot' == username[-3:].lower(),
-        'is_blocked': 'blockid' in user
-    }
-
 def update_database(conn, article_title, revisions):
     """Insert article and revision data into the database."""
     cur = conn.cursor()
@@ -149,23 +167,29 @@ def update_database(conn, article_title, revisions):
     article_id = cur.fetchone()["id"]
 
     for rev in revisions:
-        username = rev["user"]
+        username = rev.get("user")
+        if not username:  # Skip if no username
+            continue
+            
         user_info = get_user_info(username)
         
-        # Insert or ignore user
+        # Insert or ignore user with default values if info is incomplete
         cur.execute("""
             INSERT OR IGNORE INTO users (username, is_ip, is_bot, is_blocked)
             VALUES (?, ?, ?, ?)
         """, (
             username, 
-            int(user_info['is_ip']), 
-            int(user_info['is_bot']), 
+            int(user_info.get('is_ip', False)), 
+            int(user_info.get('is_bot', False)), 
             int(user_info.get('is_blocked', False))
         ))
 
         conn.commit()
         cur.execute("SELECT id FROM users WHERE username = ?", (username,))
-        user_id = cur.fetchone()["id"]
+        user_result = cur.fetchone()
+        if not user_result:  # Skip if user wasn't inserted
+            continue
+        user_id = user_result["id"]
 
         # Insert revision
         cur.execute("""

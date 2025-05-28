@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='bluebook.svg') }}">
 </head>
 <body>
     <!-- Mobile Menu Button -->
@@ -81,7 +82,7 @@
         document.querySelector('.mobile-menu-button').addEventListener('click', () => {
             document.querySelector('.main-nav').classList.toggle('mobile-visible');
         });
-        
+
         // Loading skeletons
         function showLoadingSkeleton(container) {
             const skeleton = document.createElement('div');
