@@ -2,7 +2,8 @@ def fetch_revisions_db(conn, article_title, limit=25, page=1):
     offset = (page - 1) * limit
     cur = conn.cursor()
     cur.execute("""
-        SELECT r.revision_id, r.parent_id, r.timestamp, r.comment, u.username
+        SELECT r.revision_id, r.parent_id, r.timestamp, r.comment, 
+               r.flags, r.size_change, r.tags, u.username
         FROM revisions r
         JOIN articles a ON a.id = r.article_id
         JOIN users u ON u.id = r.user_id

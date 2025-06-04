@@ -20,17 +20,20 @@
 <table class="revision-table">
     <thead>
         <tr>
-            <th>ID</th>
+            <!--th>ID</th-->
             <th>Utilisateur</th>
             <th>Date</th>
             <th>Commentaire</th>
+            <!--th>Flags</th-->
+            <th>Tags</th>
+            <th>Taille (+/-)</th>
             <th>Diff</th>
         </tr>
     </thead>
     <tbody>
     {% for r in revisions %}
         <tr>
-            <td>{{ r['revision_id'] }}</td>
+            <!--td>{{ r['revision_id'] }}</td-->
             <td>
                 {% if r['username'] %}
                 <a href="{{ url_for('user_infos', username=r['username']) }}"
@@ -44,6 +47,9 @@
             </td>
             <td>{{ r['timestamp'] }}</td>
             <td>{{ r['comment'] or '<i>Aucun commentaire</i>'|safe }}</td>
+            <!--td>{{ r['flags'] or '<i>Pas de précisions</i>'|safe }}</td-->
+            <td>{{ r['tags'] or '<i>Pas de précisions</i>'|safe }}</td>
+            <td>{{ r['size_change'] or '<i>Aucun changement</i>'|safe }}</td>
             <td>
                 {% if r['parent_id'] %}
                 <a href="https://fr.wikipedia.org/w/index.php?title={{ title|urlencode }}&diff={{ r['revision_id'] }}&oldid={{ r['parent_id'] }}"

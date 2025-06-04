@@ -4,9 +4,8 @@ from functools import wraps
 import sqlite3
 import atexit
 from apscheduler.schedulers.background import BackgroundScheduler
-from populate import init_db, fetch_revisions_from_api, update_database
+from populate import init_db, fetch_revisions_from_api, update_database, rescrape_users
 from queries import count_users, fetch_users, fetch_revisions_db, fetch_articles
-import re
 from itsdangerous import URLSafeTimedSerializer
 
 app = Flask(__name__)
@@ -68,6 +67,10 @@ def check_scheduled_population():
                 print(f"Populated {article['title']} on schedule")
             except Exception as e:
                 print(f"Error populating {article['title']}: {str(e)}")
+
+        # Rescrape old users
+        rescrape_users(conn)
+
     finally:
         conn.close()
 
@@ -313,6 +316,7 @@ def debug_database():
         conn = get_conn()
         # Attempt a basic write query to check for locks
         conn.execute("PRAGMA journal_mode = WAL;")  # Optional: improve concurrency
+        conn.execute("PRAGMA busy_timeout=5000")
         conn.execute("VACUUM;")                     # Optional: compact database
         conn.commit()
         flash("Database debug completed successfully. No locks detected.", "success")
@@ -366,6 +370,21 @@ def toggle_admin(user_id):
     finally:
         conn.close()
     
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/rescrape-users')
+@login_required
+@approved_required
+@admin_required
+def admin_rescrape_users():
+    try:
+        conn = get_conn()
+        count = rescrape_users(conn)
+        flash(f"Rescraped {count} user accounts", "success")
+    except Exception as e:
+        flash(f"Error rescraping users: {str(e)}", "error")
+    finally:
+        if conn: conn.close()
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/articles')
