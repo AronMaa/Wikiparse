@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analyse des contributions Wikipédia</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        form {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin-top: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .results {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h2, h3 {
+            color: #2c3e50;
+            margin-top: 20px;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            padding: 15px;
+            margin-bottom: 10px;
+            background: #f9f9f9;
+            border-left: 4px solid #3498db;
+        }
+        li strong {
+            color: #2c3e50;
+        }
+        pre {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .revision-content {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        .added {
+            background-color: #e6ffed;
+            color: #22863a;
+            display: inline-block;
+        }
+        .removed {
+            background-color: #ffebe9;
+            color: #cb2431;
+            text-decoration: line-through;
+            display: inline-block;
+        }
+        .revision-meta {
+            margin-bottom: 10px;
+            font-size: 0.9em;
+            color: #666;
+        }
+        .revision-meta span {
+            margin-right: 15px;
+        }
+        .diff-container {
+            padding: 10px;
+            background: #f8f9fa;
+            border: 1px solid #eaecf0;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        /* Animation bouton copier */
+        @keyframes fadeOut {
+            0% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+        .copy-message {
+            animation: fadeOut 2s ease-in-out;
+            opacity: 0;
+            color: green;
+            margin-left: 10px;
+        }
+        .copy-button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            margin: 15px 0;
+        }
+        .copy-button:hover {
+            background: #45a049;
+        }
+        .copy-button svg {
+            margin-right: 5px;
+        }
+        /* Style diff simplifié */
+        .diff-container {
+            white-space: pre-wrap;
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>Analyse des contributions Wikipédia</h1>
+
+    <form method="post">
+        <label for="username">Nom d'utilisateur Wikipédia :</label>
+        <input type="text" id="username" name="username" required>
+        <button type="submit">Analyser les contributions</button>
+    </form>
+
+    {% if username %}
+    <div class="results">
+        <h2>Contributions récentes de {{ username }}</h2>
+        <ul>
+            {% for rev in revisions %}
+                <li>
+                    <strong>{{ rev.title }}</strong>
+                    <div class="revision-meta">
+                        <span>Date: {{ rev.timestamp }}</span>
+                        <span>Flags: {{ rev.flags }}</span>
+                        <span>Commentaire: {{ rev.comment or 'Aucun' }}</span>
+                    </div>
+                    <div class="diff-container">{{ rev.diff|safe }}</div>
+                </li>
+            {% endfor %}
+        </ul>
+
+        <h3>Prompt d'analyse généré :</h3>
+        <button class="copy-button" onclick="copyPrompt()">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path d="M8 17.929H6c-1.105 0-2-.912-2-2.036V5.036C4 3.91 4.895 3 6 3h8c1.105 0 2 .911 2 2.036v1.866m-6 .17h8c1.105 0 2 .91 2 2.035v10.857C20 21.09 19.105 22 18 22h-8c-1.105 0-2-.911-2-2.036V9.107c0-1.124.895-2.036 2-2.036z"></path>
+    </svg>
+    Copier le prompt
+    <span id="copyMessage" class="copy-message"></span>
+</button>
+        <pre>{{ prompt }}</pre>
+        <button class="copy-button" onclick="copyPrompt()">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path d="M8 17.929H6c-1.105 0-2-.912-2-2.036V5.036C4 3.91 4.895 3 6 3h8c1.105 0 2 .911 2 2.036v1.866m-6 .17h8c1.105 0 2 .91 2 2.035v10.857C20 21.09 19.105 22 18 22h-8c-1.105 0-2-.911-2-2.036V9.107c0-1.124.895-2.036 2-2.036z"></path>
+    </svg>
+    Copier le prompt
+    <span id="copyMessage" class="copy-message"></span>
+</button>
+    </div>
+{% endif %}
+</body>
+
+<script>
+function copyPrompt() {
+    const promptText = `{{ prompt }}`;
+    navigator.clipboard.writeText(promptText).then(() => {
+        const msg = document.getElementById('copyMessage');
+        msg.textContent = 'Copié !';
+        msg.style.opacity = 1;
+        setTimeout(() => {
+            msg.style.opacity = 0;
+        }, 100);
+    });
+}
+</script>
+</html>

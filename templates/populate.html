@@ -1,17 +1,41 @@
 {% extends 'index.html' %}
 {% block title %}Peupler la base{% endblock %}
 {% block content %}
-<button href="{{ url_for('populate_schedule') }}">
-    <i class="fas fa-calendar-alt"></i>
-    Peuplement planifié
-</button>
+
+<a href="{{ url_for('populate_schedule') }}" class="nav-link">
+    <button>
+        <i class="fas fa-database"></i>
+        Peuplement planifié
+    </button>
+</a>
 
 <h1>Peupler la base de données</h1>
 
-<form method="post">
-    <label>Titre de l'article Wikipédia: <input type="text" name="article" required></label>
+<form method="post" onsubmit="return validateTitle()">
+    <label>Titre de l'article Wikipédia: 
+        <input type="text" name="article" id="articleTitle" required>
+    </label>
+    <div id="titleError" style="color: red; display: none;">
+    </div>
     <button type="submit">Charger</button>
 </form>
+
+<script>
+function validateTitle() {
+    const titleInput = document.getElementById('articleTitle');
+    const errorDiv = document.getElementById('titleError');
+    const title = titleInput.value.trim();
+    
+    // Basic validation similar to server-side
+    if (!title || title[0] !== title[0].toUpperCase()) {
+        errorDiv.style.display = 'block';
+        return false;
+    }
+    
+    errorDiv.style.display = 'none';
+    return true;
+}
+</script>
 
 <!-- LOADING SCREEN >
 <div id="loading-overlay">

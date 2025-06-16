@@ -69,20 +69,96 @@
 
 <div class="pagination">
     {% if page > 1 %}
-        <a href="{{ url_for('article_detail', title=title, page=page-1, per_page=per_page) }}">&laquo; Previous</a>
+        <a href="{{ url_for('article_detail', title=title, page=1, per_page=per_page) }}">&laquo;</a>
+        <a href="{{ url_for('article_detail', title=title, page=page-1, per_page=per_page) }}">&lsaquo;</a>
+    {% endif %}
+
+    {% set last_page = (total/per_page)|round(0, 'floor')|int %}
+    {% set penultimate_page = [last_page-1, 1]|max %} {# Au moins 1 #}
+
+    {% if page > 3 %}
+        <a href="{{ url_for('article_detail', title=title, page=1, per_page=per_page) }}">1</a>
+        {% if page > 4 %}
+            <a href="#" class="ellipsis jump-page" 
+               data-min="1" 
+               data-max="{{ last_page }}" 
+               title="Aller à la page...">...</a>
+        {% endif %}
     {% endif %}
     
-    {% for p in range(1, (total // per_page + 2)) %}
+    {# Pages autour de la page courante #}
+    {% for p in range([1, page-2]|max, [page+3, last_page+1]|min) %}
         {% if p == page %}
             <span class="current-page">{{ p }}</span>
         {% else %}
             <a href="{{ url_for('article_detail', title=title, page=p, per_page=per_page) }}">{{ p }}</a>
         {% endif %}
     {% endfor %}
+
+    {# Gestion des deux dernières pages sans doublons #}
+    {% if page + 2 < last_page %}
+        {% if page + 3 < last_page %}
+        <a href="#" class="ellipsis jump-page" 
+               data-min="1" 
+               data-max="{{ last_page }}" 
+               title="Aller à la page...">...</a>
+        {% endif %}
+
+        <a href="{{ url_for('article_detail', title=title, page=last_page, per_page=per_page) }}">{{ last_page }}</a>
+    {% elif page < last_page and last_page > [page+3, 1]|max %}
+        {# Cas où on est proche de la fin #}
+        {% for p in range([page+3, penultimate_page]|min, last_page+1) %}
+            <a href="{{ url_for('article_detail', title=title, page=p, per_page=per_page) }}">{{ p }}</a>
+        {% endfor %}
+    {% endif %}
     
-    {% if page * per_page < total %}
-        <a href="{{ url_for('article_detail', title=title, page=page+1, per_page=per_page) }}">Next &raquo;</a>
+    {# Boutons suivants #}
+    {% if page < last_page %}
+        <a href="{{ url_for('article_detail', title=title, page=page+1, per_page=per_page) }}">&rsaquo;</a>
+        <a href="{{ url_for('article_detail', title=title, page=last_page, per_page=per_page) }}">&raquo;</a>
     {% endif %}
 </div>
+
+<div id="page-selector" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:20px; z-index:1000; border:1px solid #ccc;">
+    <h3>Aller à la page</h3>
+    <input type="number" id="page-input" min="1" max="{{ last_page }}" value="{{ page }}">
+    <button id="confirm-page">OK</button>
+    <button id="cancel-page">Annuler</button>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ellipsisLinks = document.querySelectorAll('.jump-page');
+    const pageSelector = document.getElementById('page-selector');
+    const pageInput = document.getElementById('page-input');
+    const confirmBtn = document.getElementById('confirm-page');
+    const cancelBtn = document.getElementById('cancel-page');
+    let currentMin = 1;
+    let currentMax = 1;
+
+    ellipsisLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            currentMin = parseInt(this.dataset.min);
+            currentMax = parseInt(this.dataset.max);
+            pageInput.min = currentMin;
+            pageInput.max = currentMax;
+            pageInput.value = Math.floor(currentMax);
+            pageSelector.style.display = 'block';
+        });
+    });
+
+    confirmBtn.addEventListener('click', function() {
+        const selectedPage = parseInt(pageInput.value);
+        if (selectedPage >= currentMin && selectedPage <= currentMax) {
+            window.location.href = `{{ url_for('article_detail', title=title, per_page=per_page) }}&page=${selectedPage}`;
+        }
+    });
+
+    cancelBtn.addEventListener('click', function() {
+        pageSelector.style.display = 'none';
+    });
+});
+</script>
 
 {% endblock %}

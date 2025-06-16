@@ -11,15 +11,36 @@
 
 <div class="card">
     <h2>Add New Scheduled Article</h2>
-    <form method="post">
-        <input type="hidden" name="action" value="add">
-        <label>Article Title: <input type="text" name="title" required></label>
+    <form method="post" onsubmit="return validateScheduleTitle()">
+    <input type="hidden" name="action" value="add">
+    <label>Article Title: 
+        <input type="text" name="title" id="scheduleTitle" required>
+    </label>
+    <div id="scheduleTitleError" style="color: red; display: none;">
+        Invalid title.
+    </div>
         <label>Update Interval (hours): 
             <input type="number" name="interval" value="24" min="1">
         </label>
         <button type="submit">Add to Schedule</button>
     </form>
 </div>
+
+<script>
+function validateScheduleTitle() {
+    const titleInput = document.getElementById('scheduleTitle');
+    const errorDiv = document.getElementById('scheduleTitleError');
+    const title = titleInput.value.trim();
+    
+    if (!title || title[0] !== title[0].toUpperCase()) {
+        errorDiv.style.display = 'block';
+        return false;
+    }
+    
+    errorDiv.style.display = 'none';
+    return true;
+}
+</script>
 
 <h2>Current Schedule</h2>
 <table class="schedule-table">

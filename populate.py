@@ -1,5 +1,6 @@
 import sqlite3
 import requests
+import re
 import ipaddress
 from datetime import datetime, timedelta
 
@@ -69,13 +70,40 @@ def init_db(db_path):
     conn.commit()
     conn.close()
 
+def validate_wiki_title(title):
+    """
+    Validate Wikipedia article title according to Wikipedia's rules.
+    Returns cleaned title or None if invalid.
+    """
+    if not title or not isinstance(title, str):
+        return None
+        
+    # Remove leading/trailing whitespace
+    title = title.strip()
+    
+    # Wikipedia titles can't be empty, start with lowercase, or contain certain special chars
+    if not title or title[0].islower():
+        return None
+        
+    # Basic validation - allow letters, numbers, spaces, punctuation and some special chars
+    # This regex matches most valid Wikipedia titles while preventing injection
+    if not re.match(r'^[A-Za-z0-9 _\-À-ÿ\'"(),.!?&%$€£§°+/:;=@#*\[\]\{\}]+$', title):
+        return None
+        
+    return title
+
 def fetch_revisions_from_api(title):
     """Fetch all revisions of a Wikipedia article using the MediaWiki API."""
+    clean_title = validate_wiki_title(title)
+    if not clean_title:
+        print(f"[fetch_revisions] Invalid title: {title}")
+        return []
+    
     session = requests.Session()
     params = {
         "action": "query",
         "prop": "revisions",
-        "titles": title,
+        "titles": clean_title,
         "rvlimit": "max",
         "rvprop": "ids|timestamp|user|comment|flags|size|tags",
         "formatversion": "2",
