@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 # Configurez votre clé API
 client = OpenAI(
-  api_key="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"
+  api_key=""
 )
 
 def get_user_revisions_diff(username, limit=10):
