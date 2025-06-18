@@ -4,6 +4,7 @@ from functools import wraps
 import sqlite3
 import atexit
 from apscheduler.schedulers.background import BackgroundScheduler
+from classifier import analyze_with_gpt, build_prompt_from_revisions, get_user_revisions_diff
 from populate import init_db, fetch_revisions_from_api, update_database, rescrape_users
 from queries import count_users, fetch_users, fetch_revisions_db, fetch_articles
 from itsdangerous import URLSafeTimedSerializer
@@ -108,116 +109,6 @@ def admin_required(f):
             return redirect(url_for('index'))
         return f(*args, **kwargs)
     return decorated_function
-
-def get_user_revisions_diff(username, limit=10):
-    """
-    Récupère les dernières révisions d'un utilisateur sur Wikipédia (langue FR)
-    """
-    S = requests.Session()
-    URL = "https://fr.wikipedia.org/w/api.php"
-
-    PARAMS = {
-        "action": "query",
-        "list": "usercontribs",
-        "ucuser": username,
-        "uclimit": limit,
-        "ucprop": "title|timestamp|comment|flags|ids|sizediff",
-        "format": "json"
-    }
-
-    try:
-        response = S.get(url=URL, params=PARAMS, timeout=15)
-        data = response.json()
-        revisions = data.get("query", {}).get("usercontribs", [])
-        
-        # Récupérer le contenu et les différences
-        prev_content = {}
-        for rev in revisions:
-            revid = rev['revid']
-            current_content = get_revision_content(revid)
-            
-            # Trouver le parent si disponible
-            parent_content = ""
-            if 'parentid' in rev:
-                parent_content = get_revision_content(rev['parentid'])
-            
-            rev['content'] = current_content
-            rev['diff'] = generate_diff(parent_content, current_content) if parent_content else "[Première version]"
-            
-            # Formatage des flags
-            rev['flags'] = ', '.join(rev.get('flags', [])) or 'Aucun'
-            
-        return revisions
-    except Exception as e:
-        return [{"title": "[Erreur]", "content": str(e)}]
-
-def get_revision_content(revid):
-    """Récupère le contenu d'une révision spécifique"""
-    S = requests.Session()
-    URL = "https://fr.wikipedia.org/w/api.php"
-    
-    PARAMS = {
-        "action": "query",
-        "prop": "revisions",
-        "revids": revid,
-        "rvprop": "content|ids",
-        "rvslots": "main",
-        "format": "json",
-        "formatversion": "2"
-    }
-    
-    try:
-        response = S.get(url=URL, params=PARAMS, timeout=10)
-        data = response.json()
-        
-        if 'pages' in data.get('query', {}):
-            for page in data['query']['pages']:
-                if 'revisions' in page:
-                    return page['revisions'][0]['slots']['main']['content']
-        return ""
-    except Exception as e:
-        print(f"Erreur révision {revid}: {str(e)}")
-        return ""
-
-def generate_diff(old_text, new_text):
-    """Génère un diff lisible entre deux versions"""
-    differ = difflib.Differ()
-    diff = list(differ.compare(
-        old_text.splitlines(keepends=True),
-        new_text.splitlines(keepends=True)
-    ))
-    
-    # Filtrer et formater les différences
-    result = []
-    for line in diff:
-        if line.startswith('+ ') and not line.startswith('+++'):
-            result.insert(0,f"<span class='added'>{line[2:]}</span>")
-        elif line.startswith('- ') and not line.startswith('---'):
-            result.append(f"<span class='removed'>{line[2:]}</span>")
-    
-    return "".join(result) if result else "[Aucun changement de texte détecté]"
-
-def build_prompt_from_revisions(username, revisions):
-    """
-    Construit un prompt formaté à partir de révisions
-    """
-    prompt = (
-        f"Analyse des contributions de l'utilisateur Wikipédia '{username}':\n\n"
-        "Pour chaque modification, examiner la nature des changements, le commentaire de modification et les flags.\n\n"
-    )
-    
-    for rev in revisions:
-        prompt += (
-            f"{rev['title']}\n"
-            f"Flags: {rev.get('flags', 'Aucun')}\n"
-            f"Commentaire: {rev.get('comment', 'Aucun')}\n"
-            f"Modifications:\n{rev.get('diff', '[Diff non disponible]')}"[:1000]+"\n\n"
-        )
-
-    prompt += (
-        "Classifiez en un mot l'utilisateur comme 'pro-palestine', 'pro-israel', ou 'neutre'."
-    )
-    return prompt
 
 @app.route('/')
 @login_required
@@ -820,10 +711,12 @@ def prompt_generator():
         username = request.form['username'].strip()
         revisions = get_user_revisions_diff(username)
         prompt = build_prompt_from_revisions(username, revisions)
+        analysis = analyze_with_gpt(prompt)
         return render_template('prompt.html', 
                            username=username, 
                            revisions=revisions, 
-                           prompt=prompt)
+                           prompt=prompt,
+                           analysis=analysis)
     return render_template('prompt.html')
 
 if __name__ == '__main__':
