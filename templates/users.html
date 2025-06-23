@@ -4,20 +4,21 @@
 
 <div class="card">
     <form method="get" class="filter-form">
-        <div class="form-grid">
+        <div class="form-grid-small">
             <label class="filter-option">
-                <input type="checkbox" name="bots" value="1" {% if filters.bots == '1' %}checked{% endif %}>
-                <span>Bots</span>
+                <input class="tick_box" type="checkbox" name="bots" value="1" {% if filters.bots == '1' %}checked{% endif %}>
+                <span>Bot</span>
             </label>
             <label class="filter-option">
-                <input type="checkbox" name="ips" value="1" {% if filters.ips == '1' %}checked{% endif %}>
-                <span>IPs</span>
+                <input class="tick_box" type="checkbox" name="ips" value="1" {% if filters.ips == '1' %}checked{% endif %}>
+                <span>IP</span>
             </label>
             <label class="filter-option">
-                <input type="checkbox" name="blocked" value="1" {% if filters.blocked == '1' %}checked{% endif %}>
-                <span>Bloqués</span>
+                <input class="tick_box" type="checkbox" name="blocked" value="1" {% if filters.blocked == '1' %}checked{% endif %}>
+                <span>Bloqué</span>
             </label>
-            
+        </div>
+        <div class="form-grid-big">
             <div class="form-group">
                 <label>Actifs dans les derniers jours:</label>
                 <input type="number" name="active_days" value="{{ filters.active_days or '' }}" min="1">
@@ -52,14 +53,13 @@
 <div class="card">
     <div class="card-header">
         <h2>Liste des utilisateurs</h2>
-        <div class="per-page-selector">
-            <form method="get">
+            <form class="right" method="get">
                 {% for key, value in filters.items() %}
                     {% if value and key not in ['per_page', 'page'] %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                     {% endif %}
                 {% endfor %}
-                <label for="per_page">Items par page:</label>
+                <label for="per_page">Utilisateurs par page:</label>
                 <select name="per_page" onchange="this.form.submit()">
                     <option value="10" {% if pagination.per_page == 10 %}selected{% endif %}>10</option>
                     <option value="25" {% if pagination.per_page == 25 %}selected{% endif %}>25</option>
@@ -68,7 +68,6 @@
                 </select>
                 <input type="hidden" name="page" value="1">
             </form>
-        </div>
     </div>
 
     <div id="users-table-container">
@@ -91,6 +90,7 @@
                         <th>Bloqué</th>
                         <th>Contributions</th>
                         <th>Dernière activité</th>
+                        <th>Bord</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -111,6 +111,10 @@
                         <td>{{ '✓' if u['is_blocked'] }}</td>
                         <td>{{ u['contributions'] }}</td>
                         <td>{{ u['last_activity'] }}</td>
+                        <td>
+                            <i class="classification-badge {{ u['classification'] }}">
+                                {{ u['classification']|upper }}</i>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -122,26 +126,102 @@
 {% if users %}
 <div class="card">
     <div class="pagination">
-        {% if pagination.page > 1 %}
-            <a href="{{ url_for('users_list', page=pagination.page-1, per_page=pagination.per_page, **filters) }}">
-                <i class="fas fa-chevron-left"></i> Précédent
-            </a>
+    {% set page = pagination.page %}
+    {% set per_page=pagination.per_page %}
+    {% set total = pagination.total %}
+
+    {% if page > 1 %}
+        <a href="{{ url_for('users_list', page=1, per_page=per_page) }}">&laquo;</a>
+        <a href="{{ url_for('users_list', page=page-1, per_page=per_page) }}">&lsaquo;</a>
+    {% endif %}
+
+    {% set last_page = (total/per_page)|round(0, 'floor')|int %}
+    {% set penultimate_page = [last_page-1, 1]|max %} {# Au moins 1 #}
+
+    {% if page > 3 %}
+        <a href="{{ url_for('users_list', page=1, per_page=per_page) }}">1</a>
+        {% if page > 4 %}
+            <a href="#" class="ellipsis jump-page" 
+               data-min="1" 
+               data-max="{{ last_page }}" 
+               title="Aller à la page...">...</a>
         {% endif %}
-        
-        {% for p in range(1, (pagination.total // pagination.per_page + 2)) %}
-            {% if p == pagination.page %}
-                <span class="current-page">{{ p }}</span>
-            {% else %}
-                <a href="{{ url_for('users_list', page=p, per_page=pagination.per_page, **filters) }}">{{ p }}</a>
-            {% endif %}
+    {% endif %}
+    
+    {# Pages autour de la page courante #}
+    {% for p in range([1, page-2]|max, [page+3, last_page+1]|min) %}
+        {% if p == page %}
+            <span class="current-page">{{ p }}</span>
+        {% else %}
+            <a href="{{ url_for('users_list', page=p, per_page=per_page) }}">{{ p }}</a>
+        {% endif %}
+    {% endfor %}
+
+    {# Gestion des deux dernières pages sans doublons #}
+    {% if page + 2 < last_page %}
+        {% if page + 3 < last_page %}
+        <a href="#" class="ellipsis jump-page" 
+               data-min="1" 
+               data-max="{{ last_page }}" 
+               title="Aller à la page...">...</a>
+        {% endif %}
+
+        <a href="{{ url_for('users_list', page=last_page, per_page=per_page) }}">{{ last_page }}</a>
+    {% elif page < last_page and last_page > [page+3, 1]|max %}
+        {# Cas où on est proche de la fin #}
+        {% for p in range([page+3, penultimate_page]|min, last_page+1) %}
+            <a href="{{ url_for('users_list', page=p, per_page=per_page) }}">{{ p }}</a>
         {% endfor %}
-        
-        {% if pagination.page * pagination.per_page < pagination.total %}
-            <a href="{{ url_for('users_list', page=pagination.page+1, per_page=pagination.per_page, **filters) }}">
-                Suivant <i class="fas fa-chevron-right"></i>
-            </a>
-        {% endif %}
-    </div>
+    {% endif %}
+    
+    {# Boutons suivants #}
+    {% if page < last_page %}
+        <a href="{{ url_for('users_list', page=page+1, per_page=per_page) }}">&rsaquo;</a>
+        <a href="{{ url_for('users_list', page=last_page, per_page=per_page) }}">&raquo;</a>
+    {% endif %}
+</div>
+
+<div id="page-selector" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:20px; z-index:1000; border:1px solid #ccc;">
+    <h3>Aller à la page</h3>
+    <input type="number" id="page-input" min="1" max="{{ last_page }}" value="{{ page }}">
+    <button id="confirm-page">OK</button>
+    <button id="cancel-page">Annuler</button>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ellipsisLinks = document.querySelectorAll('.jump-page');
+    const pageSelector = document.getElementById('page-selector');
+    const pageInput = document.getElementById('page-input');
+    const confirmBtn = document.getElementById('confirm-page');
+    const cancelBtn = document.getElementById('cancel-page');
+    let currentMin = 1;
+    let currentMax = 1;
+
+    ellipsisLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            currentMin = parseInt(this.dataset.min);
+            currentMax = parseInt(this.dataset.max);
+            pageInput.min = currentMin;
+            pageInput.max = currentMax;
+            pageInput.value = Math.floor(currentMax);
+            pageSelector.style.display = 'block';
+        });
+    });
+
+    confirmBtn.addEventListener('click', function() {
+        const selectedPage = parseInt(pageInput.value);
+        if (selectedPage >= currentMin && selectedPage <= currentMax) {
+            window.location.href = `{{ url_for('users_list', per_page=per_page) }}&page=${selectedPage}`;
+        }
+    });
+
+    cancelBtn.addEventListener('click', function() {
+        pageSelector.style.display = 'none';
+    });
+});
+</script>
 </div>
 {% endif %}
 
@@ -166,13 +246,19 @@
     .filter-form {
         display: flex;
         flex-direction: column;
-        gap: 1.5rem;
+        gap: 0.5rem;
     }
     
-    .form-grid {
+    .form-grid-small {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 1rem;
+        grid-template-columns: repeat(auto-fill, minmax(5rem, 5rem));
+        gap: 0.5rem;
+    }
+
+    .form-grid-big {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(20rem, 20rem));
+        gap: 0.5rem;
     }
     
     .filter-option {
@@ -185,13 +271,21 @@
     .form-group {
         display: flex;
         flex-direction: column;
-        gap: 0.25rem;
+        gap: 0.1rem;
     }
     
     .form-actions {
         display: flex;
         gap: 0.75rem;
         margin-top: 1rem;
+    }
+
+    .tick_box{
+        margin: -30%;
+    }
+
+    .per-page-selector{
+        align-items: end;
     }
     
     .card-header {
@@ -235,5 +329,28 @@
         align-items: center;
         gap: 0.5rem;
     }
+    .classification-badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            color: white;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+
+        .pro-palestine {
+            background-color: #4CAF50;
+        }
+
+        .pro-israel {
+            background-color: #2196F3;
+        }
+
+        .neutre {
+            background-color: #9E9E9E;
+        }
+        .right{
+            margin-right:-5%;
+        }
 </style>
 {% endblock %}

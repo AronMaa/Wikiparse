@@ -1,13 +1,58 @@
 {% extends 'index.html' %}
 {% block title %}Liste des articles{% endblock %}
+
 {% block content %}
 <h1>Articles</h1>
-<ul>
-{% for a in articles %}
-    <li>
-        <a href="{{ url_for('article_detail', title=a['title']) }}">{{ a['title'] }}</a>
-        ({{ a['rev_count'] }} révisions)
-    </li>
-{% endfor %}
-</ul>
+
+<input type="text" id="searchInput" placeholder="Rechercher un article..." style="margin-bottom: 10px; padding: 5px; width: 100%;">
+
+<table id="articlesTable" border="1" style="width:100%; border-collapse: collapse;">
+    <thead>
+        <tr>
+            <th onclick="sortTable(0)">Titre 🔽</th>
+            <th onclick="sortTable(1)">Nombre de révisions 🔽</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for a in articles %}
+        <tr>
+            <td><a href="{{ url_for('article_detail', title=a['title']) }}">{{ a['title'] }}</a></td>
+            <td>{{ a['rev_count'] }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<script>
+    // Tri de la table
+    let sortDirection = [true, true];
+    function sortTable(colIndex) {
+        const table = document.getElementById("articlesTable");
+        const rows = Array.from(table.rows).slice(1); // skip header
+        const direction = sortDirection[colIndex] ? 1 : -1;
+        sortDirection[colIndex] = !sortDirection[colIndex];
+
+        rows.sort((a, b) => {
+            const aText = a.cells[colIndex].innerText.toLowerCase();
+            const bText = b.cells[colIndex].innerText.toLowerCase();
+            return (isNaN(aText) ? aText.localeCompare(bText) : aText - bText) * direction;
+        });
+
+        const tbody = table.tBodies[0];
+        tbody.innerHTML = "";
+        rows.forEach(row => tbody.appendChild(row));
+    }
+
+    // Filtrage par recherche
+    document.getElementById("searchInput").addEventListener("keyup", function () {
+        const filter = this.value.toLowerCase();
+        const rows = document.querySelectorAll("#articlesTable tbody tr");
+
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(filter) ? "" : "none";
+        });
+    });
+</script>
+
 {% endblock %}

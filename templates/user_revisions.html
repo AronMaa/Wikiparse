@@ -46,6 +46,26 @@
     </div>
 </div>
 
+<div class="analysis-section">
+    {% if user.classification %}
+    <div class="classification-badge {{ user.classification }}">
+        Bord Politique :
+        {{ user.classification|upper }}
+    </div>
+    <div class="analyze-action">
+            <a href="{{ url_for('classifier') }}?username={{ user.username }}&auto=true" class="btn btn-analyze">
+                <i class="fas fa-robot"></i> Refaire l'Analyse
+            </a>
+        </div>
+    {% else %}
+    <div class="analyze-action">
+        <a href="{{ url_for('classifier') }}?username={{ user.username }}&auto=true" class="btn btn-analyze">
+            <i class="fas fa-robot"></i> Analyser le penchant
+        </a>
+    </div>
+    {% endif %}
+</div>
+
 <div class="per-page-selector">
     <form method="get" action="">
         <label for="per_page">Items per page:</label>
@@ -106,20 +126,154 @@
 
 <div class="pagination">
     {% if page > 1 %}
-        <a href="{{ url_for('user_infos', username=user.username, page=page-1, per_page=per_page) }}">&laquo; Previous</a>
+        <a href="{{ url_for('user_infos', username=user.username, page=1, per_page=per_page) }}">&laquo;</a>
+        <a href="{{ url_for('user_infos', username=user.username, page=page-1, per_page=per_page) }}">&lsaquo;</a>
+    {% endif %}
+
+    {% set last_page = (total/per_page)|round(0, 'floor')|int %}
+    {% set penultimate_page = [last_page-1, 1]|max %} {# Au moins 1 #}
+
+    {% if page > 3 %}
+        <a href="{{ url_for('user_infos', username=user.username, page=1, per_page=per_page) }}">1</a>
+        {% if page > 4 %}
+            <a href="#" class="ellipsis jump-page" 
+               data-min="1" 
+               data-max="{{ last_page }}" 
+               title="Aller à la page...">...</a>
+        {% endif %}
     {% endif %}
     
-    {% for p in range(1, (total // per_page + 2)) %}
+    {# Pages autour de la page courante #}
+    {% for p in range([1, page-2]|max, [page+3, last_page+1]|min) %}
         {% if p == page %}
             <span class="current-page">{{ p }}</span>
         {% else %}
             <a href="{{ url_for('user_infos', username=user.username, page=p, per_page=per_page) }}">{{ p }}</a>
         {% endif %}
     {% endfor %}
+
+    {# Gestion des deux dernières pages sans doublons #}
+    {% if page + 2 < last_page %}
+        {% if page + 3 < last_page %}
+        <a href="#" class="ellipsis jump-page" 
+               data-min="1" 
+               data-max="{{ last_page }}" 
+               title="Aller à la page...">...</a>
+        {% endif %}
+
+        <a href="{{ url_for('user_infos', username=user.username, page=last_page, per_page=per_page) }}">{{ last_page }}</a>
+    {% elif page < last_page and last_page > [page+3, 1]|max %}
+        {# Cas où on est proche de la fin #}
+        {% for p in range([page+3, penultimate_page]|min, last_page+1) %}
+            <a href="{{ url_for('user_infos', username=user.username, page=p, per_page=per_page) }}">{{ p }}</a>
+        {% endfor %}
+    {% endif %}
     
-    {% if page * per_page < total %}
-        <a href="{{ url_for('user_infos', username=user.username, page=page+1, per_page=per_page) }}">Next &raquo;</a>
+    {# Boutons suivants #}
+    {% if page < last_page %}
+        <a href="{{ url_for('user_infos', username=user.username, page=page+1, per_page=per_page) }}">&rsaquo;</a>
+        <a href="{{ url_for('user_infos', username=user.username, page=last_page, per_page=per_page) }}">&raquo;</a>
     {% endif %}
 </div>
 
+<div id="page-selector" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:20px; z-index:1000; border:1px solid #ccc;">
+    <h3>Aller à la page</h3>
+    <input type="number" id="page-input" min="1" max="{{ last_page }}" value="{{ page }}">
+    <button id="confirm-page">OK</button>
+    <button id="cancel-page">Annuler</button>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ellipsisLinks = document.querySelectorAll('.jump-page');
+    const pageSelector = document.getElementById('page-selector');
+    const pageInput = document.getElementById('page-input');
+    const confirmBtn = document.getElementById('confirm-page');
+    const cancelBtn = document.getElementById('cancel-page');
+    let currentMin = 1;
+    let currentMax = 1;
+
+    ellipsisLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            currentMin = parseInt(this.dataset.min);
+            currentMax = parseInt(this.dataset.max);
+            pageInput.min = currentMin;
+            pageInput.max = currentMax;
+            pageInput.value = Math.floor(currentMax);
+            pageSelector.style.display = 'block';
+        });
+    });
+
+    confirmBtn.addEventListener('click', function() {
+        const selectedPage = parseInt(pageInput.value);
+        if (selectedPage >= currentMin && selectedPage <= currentMax) {
+            window.location.href = `{{ url_for('user_infos', username=user.username, per_page=per_page) }}&page=${selectedPage}`;
+        }
+    });
+
+    cancelBtn.addEventListener('click', function() {
+        pageSelector.style.display = 'none';
+    });
+});
+</script>
+
+<style>
+    .classification-badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            color: white;
+            font-weight: bold;
+            margin-bottom: 1rem;
+    }
+    .pro-palestine {
+        background-color: #4CAF50;
+    }
+    .pro-israel {
+        background-color: #2196F3;
+    }
+    .neutre {
+        background-color: #9E9E9E;
+    }
+    .analyze-action {
+        margin: 1rem;
+    }
+    .btn-analyze {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.5rem 1rem;
+        background-color: #4CAF50;
+        color: white;
+        border-radius: 4px;
+        text-decoration: none;
+        transition: background-color 0.3s;
+    }
+    .btn-analyze:hover {
+        background-color: #45a049;
+    }
+    .btn-analyze i {
+        margin-right: 0.5rem;
+    }
+    .badge {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        color: rgb(255, 255, 255);
+        font-weight: bold;
+        margin-bottom: 1rem;
+    }
+    .ip-badge{
+        background-color: #fff200;
+    }
+    .bot-badge{
+        background-color: #0062ff;
+    }
+    .blocked-badge{
+        background-color: #ff0000;
+    }
+    .analysis-section{
+        margin-bottom: 2rem;
+    }
+</style>
 {% endblock %}

@@ -1,33 +1,89 @@
 {% extends 'index.html' %}
 {% block title %}Résultats pour "{{ query }}"{% endblock %}
+
 {% block content %}
 <h1>Résultats de recherche pour « {{ query }} »</h1>
 
 {% if articles %}
 <h2>Articles</h2>
-<ul>
+<input type="text" id="searchArticles" placeholder="Filtrer les articles..." style="margin-bottom: 10px; width:100%; padding: 5px;">
+<table id="articlesTable" border="1" style="width:100%; border-collapse: collapse;">
+    <thead>
+        <tr>
+            <th onclick="sortTable('articlesTable', 0)">Titre 🔽</th>
+        </tr>
+    </thead>
+    <tbody>
     {% for a in articles %}
-        <li><a href="{{ url_for('article_detail', title=a['title']) }}">{{ a['title'] }}</a></li>
+        <tr>
+            <td><a href="{{ url_for('article_detail', title=a['title']) }}">{{ a['title'] }}</a></td>
+        </tr>
     {% endfor %}
-</ul>
+    </tbody>
+</table>
 {% endif %}
 
 {% if users %}
 <h2>Utilisateurs</h2>
-<ul>
+<input type="text" id="searchUsers" placeholder="Filtrer les utilisateurs..." style="margin-bottom: 10px; width:100%; padding: 5px;">
+<table id="usersTable" border="1" style="width:100%; border-collapse: collapse;">
+    <thead>
+        <tr>
+            <th onclick="sortTable('usersTable', 0)">Nom d'utilisateur 🔽</th>
+        </tr>
+    </thead>
+    <tbody>
     {% for u in users %}
-        <li>
-            <a href="{{ url_for('user_infos', username=u['username']) }}">
-                {{ u['username'] }}
-                {% if u['is_bot'] %}(bot){% endif %}
-                {% if u['is_blocked'] %}(blocked){% endif %}
-            </a>
-        </li>
+        <tr>
+            <td>
+                <a href="{{ url_for('user_infos', username=u['username']) }}">
+                    {{ u['username'] }}
+                    {% if u['is_bot'] %}(bot){% endif %}
+                    {% if u['is_blocked'] %}(bloqué){% endif %}
+                </a>
+            </td>
+        </tr>
     {% endfor %}
-</ul>
+    </tbody>
+</table>
 {% endif %}
 
 {% if not articles and not users %}
 <p>Aucun résultat trouvé.</p>
 {% endif %}
+
+<script>
+function sortTable(tableId, colIndex) {
+    const table = document.getElementById(tableId);
+    const rows = Array.from(table.rows).slice(1);
+    const direction = table.dataset.sortDir === 'asc' ? -1 : 1;
+    table.dataset.sortDir = direction === 1 ? 'asc' : 'desc';
+
+    rows.sort((a, b) => {
+        const aText = a.cells[colIndex].innerText.toLowerCase();
+        const bText = b.cells[colIndex].innerText.toLowerCase();
+        return aText.localeCompare(bText) * direction;
+    });
+
+    const tbody = table.tBodies[0];
+    tbody.innerHTML = "";
+    rows.forEach(row => tbody.appendChild(row));
+}
+
+document.getElementById("searchArticles")?.addEventListener("keyup", function () {
+    const filter = this.value.toLowerCase();
+    const rows = document.querySelectorAll("#articlesTable tbody tr");
+    rows.forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(filter) ? "" : "none";
+    });
+});
+
+document.getElementById("searchUsers")?.addEventListener("keyup", function () {
+    const filter = this.value.toLowerCase();
+    const rows = document.querySelectorAll("#usersTable tbody tr");
+    rows.forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(filter) ? "" : "none";
+    });
+});
+</script>
 {% endblock %}

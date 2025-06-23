@@ -25,6 +25,7 @@ def init_db(db_path):
         is_bot INTEGER,
         is_blocked INTEGER,
         is_scraped INTEGER DEFAULT 0,
+        classification TEXT CHECK(classification IN ('pro-palestine', 'pro-israel', 'neutre')),
         last_updated TEXT,
         UNIQUE(username)
     );

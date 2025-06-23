@@ -6,55 +6,71 @@
     <meta name="description" content="WikiApp - Gestion des articles Wikipédia">
     <title>{% block title %}WikiApp{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='bluebook.svg') }}">
 </head>
 <body>
     <!-- Mobile Menu Button -->
-    <button class="mobile-menu-button" aria-label="Toggle menu">
+    <button class="mobile-menu-button" aria-label="Toggle menu" aria-expanded="false">
         <i class="fas fa-bars"></i>
     </button>
 
-    <nav class="main-nav">
-        <div class="nav-brand">
-            <i class="fas fa-book-open"></i>
-            <span>WikiApp</span>
+    <nav class="main-nav" id="main-nav">
+        <div class="nav-header">
+            <div class="nav-brand">
+                <i class="fas fa-book-open"></i>
+                <span>WikiParse</span>
+            </div>
+            <div class="nav-actions">
+                {% if 'user_id' in session %}
+                    <div class="user-dropdown">
+                        <button class="user-btn">
+                            <i class="fas fa-user-circle"></i>
+                            <span>{{ session['username'] }}</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="dropdown-content">
+                            <a href="{{ url_for('admin_dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+                            <a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
         </div>
-        <div class="nav-links">
-            <a href="{{ url_for('index') }}" class="nav-link">
-                <i class="fas fa-home"></i>
-                <span>Accueil</span>
-            </a>
-            <a href="{{ url_for('articles') }}" class="nav-link">
-                <i class="fas fa-file-alt"></i>
-                <span>Articles</span>
-            </a>
-            <a href="{{ url_for('users_list') }}" class="nav-link">
-                <i class="fas fa-users"></i>
-                <span>Utilisateurs</span>
-            </a>
-            <a href="{{ url_for('populate_schedule') }}" class="nav-link">
-                <i class="fas fa-calendar-alt"></i>
-                <span>Peuplement</span>
-            </a>
+
+        <div class="nav-body">
+            <div class="nav-links">
+                <a href="{{ url_for('index') }}" class="nav-link" data-tooltip="Accueil">
+                    <i class="fas fa-home"></i>
+                    <span>Accueil</span>
+                </a>
+                <a href="{{ url_for('articles') }}" class="nav-link" data-tooltip="Articles">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Articles</span>
+                </a>
+                <a href="{{ url_for('users_list') }}" class="nav-link" data-tooltip="Utilisateurs">
+                    <i class="fas fa-users"></i>
+                    <span>Utilisateurs</span>
+                </a>
+                <a href="{{ url_for('populate_schedule') }}" class="nav-link" data-tooltip="Peuplement">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>Peuplement</span>
+                </a>
+                <form onsubmit="return false;" class="global-search" role="search">
+                    <input type="text" id="globalSearch" placeholder="Rechercher..." aria-label="Search" autocomplete="off">
+                    <button type="submit" aria-label="Search"><i class="fas fa-search"></i></button>
+                </form>
+
+                <div id="liveResults">
+                    <div class="search-results-section" id="articlesResults"></div>
+                    <div class="search-results-section" id="usersResults"></div>
+                    <div class="search-results-section" id="noResults" style="display: none;">
+                        <p>Aucun résultat trouvé</p>
+                    </div>
+                </div>
+            </div>
         </div>
-        {% if 'user_id' in session %}
-            <a href="{{ url_for('admin_dashboard') }}" class="nav-link">
-                <i class="fas fa-user"></i>
-                <span>{{ session['username'] }}</span>
-            </a>
-            <a href="{{ url_for('logout') }}" class="nav-link">
-                <i class="fas fa-sign-out-alt"></i>
-                <span>Logout</span>
-            </a>
-        {% endif %}
-        <form action="{{ url_for('search') }}" method="get" class="global-search" role="search">
-            <input type="text" name="q" placeholder="Rechercher..." aria-label="Search" required>
-            <button type="submit" aria-label="Search">
-                <i class="fas fa-search"></i>
-            </button>
-        </form>
     </nav>
 
     <main class="container">
@@ -78,10 +94,51 @@
     </main>
 
     <script>
-        // Mobile menu toggle
-        document.querySelector('.mobile-menu-button').addEventListener('click', () => {
-            document.querySelector('.main-nav').classList.toggle('mobile-visible');
+        // Mobile menu toggle amélioré
+    const mobileMenuButton = document.querySelector('.mobile-menu-button');
+    const mainNav = document.getElementById('main-nav');
+    
+    // User dropdown
+        const userDropdown = document.querySelector('.user-dropdown');
+        if (userDropdown) {
+            const userBtn = userDropdown.querySelector('.user-btn');
+            userBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                userDropdown.classList.toggle('active');
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', () => {
+                userDropdown.classList.remove('active');
+            });
+        }
+
+    mobileMenuButton.addEventListener('click', () => {
+        const isExpanded = mobileMenuButton.getAttribute('aria-expanded') === 'true';
+        mobileMenuButton.setAttribute('aria-expanded', !isExpanded);
+        mainNav.classList.toggle('mobile-visible');
+        document.body.classList.toggle('no-scroll');
+        
+        // Changement d'icône
+        const icon = mobileMenuButton.querySelector('i');
+        if (isExpanded) {
+            icon.classList.replace('fa-times', 'fa-bars');
+        } else {
+            icon.classList.replace('fa-bars', 'fa-times');
+        }
+    });
+
+    // Fermer le menu quand on clique sur un lien
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth <= 992) {
+                mainNav.classList.remove('mobile-visible');
+                mobileMenuButton.setAttribute('aria-expanded', 'false');
+                document.body.classList.remove('no-scroll');
+                mobileMenuButton.querySelector('i').classList.replace('fa-times', 'fa-bars');
+            }
         });
+    });
 
         // Loading skeletons
         function showLoadingSkeleton(container) {
@@ -96,6 +153,88 @@
             container.appendChild(skeleton);
             return skeleton;
         }
+
+        document.getElementById('globalSearch').addEventListener('input', async function() {
+            const query = this.value.trim();
+            const resultsDiv = document.getElementById('liveResults');
+            const noResultsDiv = document.getElementById('noResults');
+            
+            // Reset display
+            document.getElementById('articlesResults').innerHTML = '';
+            document.getElementById('usersResults').innerHTML = '';
+            noResultsDiv.style.display = 'none';
+            
+            if (query.length < 2) {
+                resultsDiv.style.display = 'none';
+                return;
+            }
+            
+            // Show loading state
+            resultsDiv.style.display = 'block';
+            document.getElementById('articlesResults').innerHTML = '<p>Recherche en cours...</p>';
+            
+            try {
+                const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+                
+                let articlesHTML = '';
+                let usersHTML = '';
+                
+                if (data.articles && data.articles.length) {
+                    articlesHTML = `
+                        <h4>Articles (${data.articles.length})</h4>
+                        <ul>
+                            ${data.articles.map(a => 
+                                `<li>
+                                    <a href="/articles/${encodeURIComponent(a.title)}">
+                                        ${a.title}
+                                    </a>
+                                </li>`
+                            ).join('')}
+                        </ul>
+                    `;
+                }
+                
+                if (data.users && data.users.length) {
+                    usersHTML = `
+                        <h4>Utilisateurs (${data.users.length})</h4>
+                        <ul>
+                            ${data.users.map(u => 
+                                `<li>
+                                    <a href="/users/${encodeURIComponent(u.username)}">
+                                        ${u.username}
+                                        ${u.is_bot ? '<span class="bot-tag">(bot)</span>' : ''}
+                                        ${u.is_blocked ? '<span class="blocked-tag">(bloqué)</span>' : ''}
+                                    </a>
+                                </li>`
+                            ).join('')}
+                        </ul>
+                    `;
+                }
+                
+                document.getElementById('articlesResults').innerHTML = articlesHTML;
+                document.getElementById('usersResults').innerHTML = usersHTML;
+                
+                // Show no results message if empty
+                if (!articlesHTML && !usersHTML) {
+                    noResultsDiv.style.display = 'block';
+                }
+                
+            } catch (err) {
+                console.error('Erreur de recherche :', err);
+                resultsDiv.style.display = 'none';
+            }
+        });
+
+        // Close results when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.global-search')) {
+                document.getElementById('liveResults').style.display = 'none';
+            }
+        });
     </script>
 </body>
+<footer>
+    @ 2025, Wikiparse by Le CRIF, No Rights Reserved
+</footer>
 </html>

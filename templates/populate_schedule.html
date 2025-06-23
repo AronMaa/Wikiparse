@@ -1,5 +1,5 @@
 {% extends 'index.html' %}
-{% block title %}Scheduled Population{% endblock %}
+{% block title %}Peuplement Programmé{% endblock %}
 {% block content %}
 <a href="{{ url_for('populate_db') }}" class="nav-link">
     <button>
@@ -7,22 +7,26 @@
         Peuplement manuel
     </button>
 </a>
-<h1>Scheduled Database Population</h1>
+<h1>Peuplement programmée de la base de données</h1>
 
 <div class="card">
-    <h2>Add New Scheduled Article</h2>
+    <h2>Ajouter un nouvel article au planning</h2>
     <form method="post" onsubmit="return validateScheduleTitle()">
-    <input type="hidden" name="action" value="add">
-    <label>Article Title: 
-        <input type="text" name="title" id="scheduleTitle" required>
-    </label>
-    <div id="scheduleTitleError" style="color: red; display: none;">
-        Invalid title.
-    </div>
-        <label>Update Interval (hours): 
-            <input type="number" name="interval" value="24" min="1">
-        </label>
-        <button type="submit">Add to Schedule</button>
+        <input type="hidden" name="action" value="add">
+        <div>
+            <label>Titre de l'article: 
+                <div><input type="text" name="title" id="scheduleTitle" required></div>
+            </label>
+        </div>
+        <div id="scheduleTitleError" style="color: red; display: none;">
+            Titre Invalide.
+        </div>
+        <div>
+            <label>Intervalle (en heures): 
+                <div><input type="number" name="interval" value="24" min="1"></div>
+            </label>
+            <button class="validate" type="submit">Ajouter au programme</button>
+        </div>
     </form>
 </div>
 
@@ -42,14 +46,14 @@ function validateScheduleTitle() {
 }
 </script>
 
-<h2>Current Schedule</h2>
+<h2>Programme</h2>
 <table class="schedule-table">
     <thead>
         <tr>
             <th>Article</th>
-            <th>Interval (hours)</th>
-            <th>Last Populated</th>
-            <th>Status</th>
+            <th>Intervalle (en heures)</th>
+            <th>Dernière mise à jour</th>
+            <th>Statut</th>
             <th>Actions</th>
         </tr>
     </thead>
@@ -58,31 +62,31 @@ function validateScheduleTitle() {
         <tr>
             <td>{{ article.title }}</td>
             <td>{{ article.interval_hours }}</td>
-            <td>{{ article.last_populated_pretty or 'Never' }}</td>
-            <td>{{ 'Active' if article.is_active else 'Paused' }}</td>
+            <td>{{ article.last_populated_pretty or 'Jamais' }}</td>
+            <td>{{ 'Actif' if article.is_active else 'Pause' }}</td>
             <td class="actions">
                 <form method="post" style="display: inline;">
                     <input type="hidden" name="action" value="toggle">
                     <input type="hidden" name="title" value="{{ article.title }}">
                     <button type="submit" class="btn-toggle">
-                        {{ 'Pause' if article.is_active else 'Activate' }}
+                        {{ 'Pause' if article.is_active else 'Activer' }}
                     </button>
                 </form>
                 <form method="post" style="display: inline;">
                     <input type="hidden" name="action" value="run_now">
                     <input type="hidden" name="title" value="{{ article.title }}">
-                    <button type="submit" class="btn-run">Run Now</button>
+                    <button type="submit" class="btn-run">Lancer</button>
                 </form>
                 <form method="post" style="display: inline;">
                     <input type="hidden" name="action" value="remove">
                     <input type="hidden" name="title" value="{{ article.title }}">
-                    <button type="submit" class="btn-remove">Remove</button>
+                    <button type="submit" class="btn-remove">Retirer</button>
                 </form>
             </td>
         </tr>
         {% else %}
         <tr>
-            <td colspan="5">No scheduled articles</td>
+            <td colspan="5">Pas d'articles programmés</td>
         </tr>
         {% endfor %}
     </tbody>
@@ -96,5 +100,6 @@ function validateScheduleTitle() {
 .btn-toggle { background: #ffc107; }
 .btn-run { background: #28a745; color: white; }
 .btn-remove { background: #dc3545; color: white; }
+.validate { margin-top: 1rem; }
 </style>
 {% endblock %}

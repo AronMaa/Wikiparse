@@ -1,17 +1,28 @@
 {% extends 'index.html' %}
 {% block title %}Register{% endblock %}
 {% block content %}
-<h1>Register</h1>
-<form method="post">
-    <div>
-        <label for="username">Username:</label>
-        <input type="text" id="username" name="username" required>
-    </div>
-    <div>
-        <label for="password">Password:</label>
-        <input type="password" id="password" name="password" required>
-    </div>
-    <button type="submit">Register</button>
-</form>
-<p>Already have an account? <a href="{{ url_for('login') }}">Login here</a></p>
+<div class="card">
+    <h1>Enregistrement</h1>
+    <form method="post">
+        <div>
+            <label for="username">Nom:</label>
+        </div>
+        <div>
+            <input type="text" id="username" name="username" required>
+        </div>
+        <div>
+            <label for="password">Mot de passe:</label>
+        </div>
+        <div>
+            <input type="password" id="password" name="password" required>
+        </div>
+        <button type="submit">S'enregistrer</button>
+    </form>
+    <p>Déja un compte? <a href="{{ url_for('login') }}">Se connecter</a></p>
+</div>
+<style>
+    button{
+        margin-top:1rem
+    }
+</style>
 {% endblock %}

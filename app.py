@@ -1,10 +1,11 @@
-from flask import Flask, abort, render_template, request, url_for, redirect, flash, session
+from datetime import datetime
+from flask import Flask, render_template, request, url_for, redirect, flash, session, jsonify
 from flask_bcrypt import Bcrypt
 from functools import wraps
 import sqlite3
 import atexit
 from apscheduler.schedulers.background import BackgroundScheduler
-from classifier import analyze_with_gpt, build_prompt_from_revisions, get_user_revisions_diff
+from classifier import analyze_with_gpt, build_prompt_from_revisions, get_user_revisions_diff, analyze_top_contributors
 from populate import init_db, fetch_revisions_from_api, update_database, rescrape_users
 from queries import count_users, fetch_users, fetch_revisions_db, fetch_articles
 from itsdangerous import URLSafeTimedSerializer
@@ -72,12 +73,18 @@ def check_scheduled_population():
         # Rescrape old users
         rescrape_users(conn)
 
+        # Analyse des top contributeurs
+        if datetime.now().hour == 3:
+            print("Analyzing top contributors...")
+            results = analyze_top_contributors()
+            print(f"Analyzed {len(results)} top contributors")
+            
     finally:
         conn.close()
 
 # Initialize scheduler
 scheduler = BackgroundScheduler()
-scheduler.add_job(check_scheduled_population, 'interval', minutes=60)
+scheduler.add_job(check_scheduled_population, 'interval', hours=1)
 scheduler.start()
 
 # Shut down the scheduler when exiting the app
@@ -109,6 +116,20 @@ def admin_required(f):
             return redirect(url_for('index'))
         return f(*args, **kwargs)
     return decorated_function
+
+def classification_update(username, analysis):
+    conn = get_conn()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
+    user_id = cursor.fetchone()
+    
+    if user_id:
+        user_id = user_id[0]
+        cursor.execute("""
+            UPDATE users SET classification = (?) WHERE id = ?
+        """, (analysis[0], user_id))
+            
+        conn.commit()
 
 @app.route('/')
 @login_required
@@ -518,7 +539,7 @@ def user_infos(username):
         
         # Get user information
         cursor.execute("""
-            SELECT id, username, is_ip, is_bot, is_blocked 
+            SELECT id, username, is_ip, is_bot, is_blocked, classification 
             FROM users 
             WHERE username = ?
         """, (username,))
@@ -674,49 +695,115 @@ def populate_article_now(title):
 @login_required
 @approved_required
 def search():
-    query = request.args.get('q', '').strip().lower()
+    query = request.args.get('q', '').strip()
     if not query:
-        flash("Veuillez entrer une requête de recherche.", "error")
+        flash("Please enter a search query", "error")
         return redirect(url_for('index'))
 
-    try:
-        conn = get_conn()
-        cursor = conn.cursor()
-
-        # Search articles
-        cursor.execute('''
-            SELECT title FROM articles
-            WHERE LOWER(title) LIKE ?
-        ''', (f"%{query}%",))
-        articles = cursor.fetchall()
-
-        # Search users
-        cursor.execute('''
-            SELECT * FROM users
-            WHERE LOWER(username) LIKE ?
-        ''', (f"%{query}%",))
-        users = cursor.fetchall()
-
-        return render_template('search_results.html', query=query, articles=articles, users=users)
+    try:        
+        # Use the API endpoint to get consistent results
+        api_url = url_for('api_search', q=query, _external=False)
+        response = app.test_client().get(api_url)
+        
+        if response.status_code != 200:
+            flash("Search service unavailable", "error")
+            return redirect(url_for('index'))
+            
+        data = response.get_json()
+    
+        articles = data.get('articles', [])
+        users = data.get('users', [])
+        
+        return render_template('search_results.html', 
+                            query=query, 
+                            articles=articles,
+                            users=users)
 
     except Exception as e:
-        flash(f"Erreur de recherche : {str(e)}", "error")
+        app.logger.error(f"Search error: {str(e)}")
+        flash("An error occurred during search", "error")
         return redirect(url_for('index'))
+
+@app.route('/api/search')
+@login_required
+@approved_required
+def api_search():
+    query = request.args.get('q', '').strip().lower()
+    if not query:
+        return jsonify({'articles': [], 'users': []})
+    
+    conn = get_conn()
+    if not conn:
+        return jsonify({'error': 'Database unavailable'}), 500
+        
+    try:
+        cursor = conn.cursor()
+        
+        # More efficient search with FTS if available
+        # Search articles - using prefix search for better performance
+        cursor.execute('''
+            SELECT title FROM articles
+            WHERE LOWER(title) LIKE ? || '%'
+            LIMIT 50
+        ''', (query,))
+        articles = [dict(row) for row in cursor.fetchall()]
+        
+        # Search users - using prefix search
+        cursor.execute('''
+            SELECT username, is_bot, is_blocked FROM users
+            WHERE LOWER(username) LIKE ? || '%'
+            LIMIT 50
+        ''', (query,))
+        users = [dict(row) for row in cursor.fetchall()]
+        
+        return jsonify({
+            'articles': articles,
+            'users': users
+        })
+    except Exception as e:
+        app.logger.error(f"API search error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
     finally:
         if conn: conn.close()
 
 @app.route('/ai-classifier', methods=['GET', 'POST'])
-def prompt_generator():
+@login_required
+@approved_required
+@admin_required
+def classifier():
+    username = request.args.get('username', '') \
+        if request.method == 'GET' else request.form.get('username', '').strip()
+
     if request.method == 'POST':
-        username = request.form['username'].strip()
+        action = request.form.get('action')
+        revisions = get_user_revisions_diff(username)
+        prompt = build_prompt_from_revisions(username, revisions)
+
+        analysis = None
+        if action == "analyze":
+            analysis = analyze_with_gpt(prompt)
+        
+            classification_update(username, analysis)
+        
+        return render_template('prompt.html', 
+                               username=username, 
+                               revisions=revisions, 
+                               prompt=prompt,
+                               analysis=analysis)
+    
+    if username:
         revisions = get_user_revisions_diff(username)
         prompt = build_prompt_from_revisions(username, revisions)
         analysis = analyze_with_gpt(prompt)
-        return render_template('prompt.html', 
-                           username=username, 
-                           revisions=revisions, 
-                           prompt=prompt,
-                           analysis=analysis)
+
+        classification_update(username, analysis)
+
+        return render_template('prompt.html',
+                             username=username,
+                             revisions=revisions,
+                             prompt=prompt,
+                             analysis=analysis)
+    
     return render_template('prompt.html')
 
 if __name__ == '__main__':

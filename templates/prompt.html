@@ -1,209 +1,404 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analyse des contributions Wikipédia</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        h1 {
-            color: #2c3e50;
-            text-align: center;
-            margin-bottom: 30px;
-            border-bottom: 2px solid #3498db;
-            padding-bottom: 10px;
-        }
-        form {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
-        }
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: bold;
-        }
-        input[type="text"] {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 16px;
-            box-sizing: border-box;
-        }
-        button {
-            background-color: #3498db;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            margin-top: 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s;
-        }
-        button:hover {
-            background-color: #2980b9;
-        }
-        .results {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        h2, h3 {
-            color: #2c3e50;
-            margin-top: 20px;
-        }
-        ul {
-            list-style-type: none;
-            padding: 0;
-        }
-        li {
-            padding: 15px;
-            margin-bottom: 10px;
-            background: #f9f9f9;
-            border-left: 4px solid #3498db;
-        }
-        li strong {
-            color: #2c3e50;
-        }
-        pre {
-            background: #f0f0f0;
-            padding: 15px;
-            border-radius: 4px;
-            overflow-x: auto;
-            white-space: pre-wrap;
-        }
-        .revision-content {
-            margin-top: 10px;
-            padding: 10px;
-            background: #f0f0f0;
-            border-radius: 4px;
-            font-family: monospace;
-        }
-        .added {
-            background-color: #e6ffed;
-            color: #22863a;
-            display: inline-block;
-        }
-        .removed {
-            background-color: #ffebe9;
-            color: #cb2431;
-            text-decoration: line-through;
-            display: inline-block;
-        }
-        .revision-meta {
-            margin-bottom: 10px;
-            font-size: 0.9em;
-            color: #666;
-        }
-        .revision-meta span {
-            margin-right: 15px;
-        }
-        .diff-container {
-            padding: 10px;
-            background: #f8f9fa;
-            border: 1px solid #eaecf0;
-            border-radius: 4px;
-            font-family: monospace;
-            white-space: pre-wrap;
-        }
-        /* Animation bouton copier */
-        @keyframes fadeOut {
-            0% { opacity: 1; }
-            100% { opacity: 0; }
-        }
-        .copy-message {
-            animation: fadeOut 2s ease-in-out;
-            opacity: 0;
-            color: green;
-            margin-left: 10px;
-        }
-        .copy-button {
-            background: #4CAF50;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            margin: 15px 0;
-        }
-        .copy-button:hover {
-            background: #45a049;
-        }
-        .copy-button svg {
-            margin-right: 5px;
-        }
-        /* Style diff simplifié */
-        .diff-container {
-            white-space: pre-wrap;
-            background: #f5f5f5;
-            padding: 10px;
-            border-radius: 4px;
-            margin: 10px 0;
-            font-family: monospace;
-        }
-    </style>
-</head>
-<body>
-    <h1>Analyse des contributions Wikipédia</h1>
+{% extends 'index.html' %}
 
-    <form method="post">
-        <label for="username">Nom d'utilisateur Wikipédia :</label>
-        <input type="text" id="username" name="username" required>
-        <button type="submit">Analyser les contributions</button>
+{% block title %}Analyse des contributeurs Wikipédia{% endblock %}
+
+{% block content %}
+<div class="analyzer-container">
+    <h1 class="analyzer-title">Analyse des contributions Wikipédia</h1>
+
+    <form method="post" class="analyzer-form">
+        <div class="form-group">
+            <label for="username">Nom d'utilisateur Wikipédia :</label>
+            <input type="text" id="username" name="username" required class="form-input">
+        </div>
+        
+        <div class="form-actions">
+            <button type="submit" name="action" value="generate_prompt" class="btn btn-generate">
+                <i class="fas fa-code"></i> Générer le Prompt
+            </button>
+            <button type="submit" name="action" value="analyze" class="btn btn-analyze">
+                <i class="fas fa-robot"></i> Analyser avec l'IA
+            </button>
+        </div>
     </form>
 
     {% if username %}
-    <div class="results">
-        <h2>Contributions récentes de {{ username }}</h2>
-        <ul>
-            {% for rev in revisions %}
-                <li>
-                    <strong>{{ rev.title }}</strong>
+    <div class="results-section">
+        <div class="contributions-container">
+            <h2>Contributions récentes de {{ username }}</h2>
+            <div class="revisions-list">
+                {% for rev in revisions %}
+                <div class="revision-card">
+                    <h3 class="revision-title">{{ rev.title }}</h3>
                     <div class="revision-meta">
-                        <span>Date: {{ rev.timestamp }}</span>
-                        <span>Flags: {{ rev.flags }}</span>
-                        <span>Commentaire: {{ rev.comment or 'Aucun' }}</span>
+                        <span class="meta-item"><i class="fas fa-calendar-alt"></i> {{ rev.timestamp }}</span>
+                        <span class="meta-item"><i class="fas fa-flag"></i> {{ rev.flags }}</span>
+                        <span class="meta-item"><i class="fas fa-comment"></i> {{ rev.comment or 'Aucun' }}</span>
                     </div>
                     <div class="diff-container">{{ rev.diff|safe }}</div>
-                </li>
-            {% endfor %}
-        </ul>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
 
-        <h3>Prompt d'analyse généré :</h3>
-        <button class="copy-button" onclick="copyPrompt()">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-        <path d="M8 17.929H6c-1.105 0-2-.912-2-2.036V5.036C4 3.91 4.895 3 6 3h8c1.105 0 2 .911 2 2.036v1.866m-6 .17h8c1.105 0 2 .91 2 2.035v10.857C20 21.09 19.105 22 18 22h-8c-1.105 0-2-.911-2-2.036V9.107c0-1.124.895-2.036 2-2.036z"></path>
-    </svg>
-    Copier le prompt
-    <span id="copyMessage" class="copy-message"></span>
-</button>
-        <pre>{{ prompt }}</pre>
-        <button class="copy-button" onclick="copyPrompt()">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-        <path d="M8 17.929H6c-1.105 0-2-.912-2-2.036V5.036C4 3.91 4.895 3 6 3h8c1.105 0 2 .911 2 2.036v1.866m-6 .17h8c1.105 0 2 .91 2 2.035v10.857C20 21.09 19.105 22 18 22h-8c-1.105 0-2-.911-2-2.036V9.107c0-1.124.895-2.036 2-2.036z"></path>
-    </svg>
-    Copier le prompt
-    <span id="copyMessage" class="copy-message"></span>
-</button>
+        <div class="prompt-section">
+            <div class="section-header">
+                <h3>Prompt d'analyse généré</h3>
+                <button class="copy-button" onclick="copyPrompt()">
+                    <i class="fas fa-copy"></i> Copier
+                    <span id="copyMessage" class="copy-message"></span>
+                </button>
+            </div>
+            <pre class="prompt-content">{{ prompt }}</pre>
+        </div>
+
+        {% if analysis %}
+        <div class="analysis-result {{ analysis[0] }}-result">
+            <div class="result-header">
+                <h2>Résultat de l'Analyse Politique</h2>
+                <div class="classification-badge {{ analysis[0] }}">
+                    {{ analysis[0]|upper }}
+                </div>
+            </div>
+            
+            <div class="analysis-details">
+                <h3><i class="fas fa-info-circle"></i> Détails de l'analyse :</h3>
+                <div class="analysis-content">{{ analysis[1] }}</div>
+            </div>
+            
+            {% if analysis[0] != 'erreur' %}
+            <div class="result-actions">
+                <a href="{{ url_for('user_infos', username=username) }}" class="btn btn-profile">
+                    <i class="fas fa-user"></i> Voir le profil complet
+                </a>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
     </div>
-    <strong>{{ analysis }}</strong>
-{% endif %}
-</body>
+    {% endif %}
+</div>
+
+<style>
+/* Main Container */
+.analyzer-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+    font-family: 'Inter', sans-serif;
+}
+
+/* Titles */
+.analyzer-title {
+    color: #2c3e50;
+    text-align: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #3498db;
+}
+
+/* Form Styles */
+.analyzer-form {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-input {
+    width: 100%;
+    padding: 0.8rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: border-color 0.3s;
+}
+
+.form-input:focus {
+    border-color: #3498db;
+    outline: none;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.8rem 1.5rem;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn i {
+    margin-right: 0.5rem;
+}
+
+.btn-generate {
+    background-color: #3498db;
+    color: white;
+}
+
+.btn-generate:hover {
+    background-color: #2980b9;
+}
+
+.btn-analyze {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.btn-analyze:hover {
+    background-color: #45a049;
+}
+
+/* Results Section */
+.results-section {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+/* Revisions List */
+.revisions-list {
+    margin-top: 1.5rem;
+}
+
+.revision-card {
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    background: #f9f9f9;
+    border-left: 4px solid #3498db;
+    border-radius: 4px;
+}
+
+.revision-title {
+    color: #2c3e50;
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+
+.revision-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.diff-container {
+    padding: 1rem;
+    background: #f5f5f5;
+    border-radius: 4px;
+    font-family: monospace;
+    white-space: pre-wrap;
+    overflow-x: auto;
+}
+
+.added {
+    background-color: #e6ffed;
+    color: #22863a;
+    display: inline;
+}
+
+.removed {
+    background-color: #ffebe9;
+    color: #cb2431;
+    text-decoration: line-through;
+    display: inline;
+}
+
+/* Prompt Section */
+.prompt-section {
+    margin: 2rem 0;
+    padding: 1.5rem;
+    background: #f5f5f5;
+    border-radius: 8px;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.copy-button {
+    background: #4CAF50;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    transition: background-color 0.3s;
+}
+
+.copy-button:hover {
+    background: #45a049;
+}
+
+.copy-message {
+    margin-left: 0.5rem;
+    color: #4CAF50;
+    font-size: 0.9rem;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.prompt-content {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 4px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    font-family: monospace;
+}
+
+/* Analysis Result */
+.analysis-result {
+    margin-top: 2rem;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.pro-palestine-result {
+    border-left: 4px solid #4CAF50;
+    background-color: #f8fff8;
+}
+
+.pro-israel-result {
+    border-left: 4px solid #2196F3;
+    background-color: #f8faff;
+}
+
+.neutre-result {
+    border-left: 4px solid #9E9E9E;
+    background-color: #f9f9f9;
+}
+
+.erreur-result {
+    border-left: 4px solid #F44336;
+    background-color: #fff8f8;
+}
+
+.result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.classification-badge {
+    display: inline-block;
+    padding: 0.5rem 1.5rem;
+    border-radius: 20px;
+    color: white;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+}
+
+.pro-palestine {
+    background-color: #4CAF50;
+}
+
+.pro-israel {
+    background-color: #2196F3;
+}
+
+.neutre {
+    background-color: #9E9E9E;
+}
+
+.erreur {
+    background-color: #F44336;
+}
+
+.analysis-details {
+    margin: 1.5rem 0;
+    padding: 1.5rem;
+    background: white;
+    border-radius: 4px;
+}
+
+.analysis-content {
+    white-space: pre-wrap;
+    line-height: 1.6;
+}
+
+.result-actions {
+    margin-top: 1.5rem;
+}
+
+.btn-profile {
+    background-color: #6c757d;
+    color: white;
+    text-decoration: none;
+    padding: 0.8rem 1.5rem;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    transition: background-color 0.3s;
+}
+
+.btn-profile:hover {
+    background-color: #5a6268;
+    color: white;
+}
+
+/* Animation bouton copier */
+@keyframes fadeOut {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+.copy-message.show {
+    opacity: 1;
+    animation: fadeOut 2s ease-in-out 1s forwards;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .revision-meta {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .result-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+}
+</style>
 
 <script>
 function copyPrompt() {
@@ -211,11 +406,11 @@ function copyPrompt() {
     navigator.clipboard.writeText(promptText).then(() => {
         const msg = document.getElementById('copyMessage');
         msg.textContent = 'Copié !';
-        msg.style.opacity = 1;
+        msg.classList.add('show');
         setTimeout(() => {
-            msg.style.opacity = 0;
-        }, 100);
+            msg.classList.remove('show');
+        }, 3000);
     });
 }
 </script>
-</html>
+{% endblock %}
