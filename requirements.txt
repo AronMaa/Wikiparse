@@ -11,7 +11,7 @@ flask-bcrypt==1.0.1
 itsdangerous==2.1.2
 
 # Data Processing
-pandas==2.1.4
+pandas==2.2.3  # Updated to newer version with Python 3.13 support
 numpy==1.26.3
 
 # Visualization
@@ -30,5 +30,5 @@ tiktoken==0.5.2
 
 # Utilities
 python-dotenv==1.0.0
-diff-match-patch==20231111.1
+diff-match-patch==20240402  # Updated version
 ipaddress==1.0.23
