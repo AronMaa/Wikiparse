@@ -1,0 +1,430 @@
+{% extends 'index.html' %}
+{% block title %}Accueil{% endblock %}
+
+{% block content %}
+    <style>
+        /* Styles supplémentaires spécifiques à la page d'accueil */
+        .hero {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 5rem 2rem;
+            border-radius: var(--radius);
+            margin-bottom: 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 86, 179, 0.3);
+        }
+        
+        .hero::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none"><path fill="rgba(255,255,255,0.05)" d="M0,0 L100,0 L100,100 L0,100 Z" /></svg>');
+            opacity: 0.1;
+            pointer-events: none;
+        }
+        
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1.5rem;
+            position: relative;
+            z-index: 1;
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .hero p {
+            font-size: 1.3rem;
+            max-width: 800px;
+            margin: 0 auto 3rem;
+            position: relative;
+            z-index: 1;
+            line-height: 1.6;
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin: 4rem 0;
+        }
+        
+        .feature-card {
+            background: var(--bg-light);
+            border-radius: var(--radius);
+            padding: 2.5rem 2rem;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            border: 1px solid var(--border);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0, 86, 179, 0.2);
+        }
+        
+        .feature-card.premium {
+            border: 2px solid #d4af37;
+            position: relative;
+        }
+        
+        .feature-card.premium::after {
+            content: 'ADMIN';
+            position: absolute;
+            top: 10px;
+            right: -30px;
+            background: #d4af37;
+            color: white;
+            padding: 0.25rem 2rem;
+            transform: rotate(45deg);
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+        
+        .feature-icon {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+            background: var(--primary-light);
+            width: 80px;
+            height: 80px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+        
+        .feature-card.premium .feature-icon {
+            color: #d4af37;
+            background: rgba(212, 175, 55, 0.1);
+        }
+        
+        .cta-section {
+            text-align: center;
+            margin: 5rem 0;
+            padding: 3rem 2rem;
+            background: var(--bg);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+        }
+        
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin: 3rem 0;
+        }
+        
+        .stat-box {
+            text-align: center;
+            padding: 2rem 1.5rem;
+            background: var(--bg-light);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            transition: var(--transition);
+        }
+        
+        .stat-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 86, 179, 0.15);
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--bg);
+            margin-bottom: 0.5rem;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+        }
+        
+        .stat-label {
+            color: var(--text-light);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+        
+        .testimonials {
+            margin: 4rem 0;
+            background: var(--primary-light);
+            padding: 3rem;
+            border-radius: var(--radius);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .testimonial-card {
+            background: white;
+            padding: 2rem;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            margin: 1rem;
+            position: relative;
+        }
+        
+        .testimonial-card::before {
+            content: '"';
+            position: absolute;
+            top: 10px;
+            left: 20px;
+            font-size: 5rem;
+            color: var(--primary-light);
+            font-family: serif;
+            line-height: 1;
+            z-index: 0;
+        }
+        
+        .testimonial-content {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .client-logo {
+            height: 10rem;
+        }
+
+        .round {
+            border-radius: 50%;
+        }
+        
+        .demo-video {
+            margin: 4rem 0;
+            background: var(--bg);
+            padding: 2rem;
+            border-radius: var(--radius);
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+        
+        .video-placeholder {
+            background: var(--bg-light);
+            height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius);
+            margin: 2rem 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .video-placeholder::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(0,86,179,0.1) 0%, rgba(0,51,102,0.2) 100%);
+        }
+        
+        .play-button {
+            width: 80px;
+            height: 80px;
+            background: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2rem;
+            z-index: 1;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        
+        .play-button:hover {
+            transform: scale(1.1);
+            background: var(--secondary);
+        }
+
+        .round-text{
+            border-radius: 50%;
+            padding-top: 5%;
+            padding-bottom: 5%;
+        }
+
+        
+        .feature-card.coming {
+            border: 2px solid #FF91A4;
+            position: relative;
+        }
+        
+        .feature-card.coming::after {
+            content: 'A VENIR';
+            position: absolute;
+            top: 10px;
+            right: -30px;
+            background: #FF91A4;
+            color: white;
+            padding: 0.25rem 2rem;
+            transform: rotate(45deg);
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+
+        .feature-card.coming .feature-icon {
+            color: #FF91A4;
+            background: rgba(255, 145, 164, 0.1);
+        }
+        #fonction {
+            scroll-padding-top: 17rem;
+        }
+        #fonction {
+            scroll-padding-top: 10rem;
+        }
+    </style>
+
+    <div class="container">
+        <!-- Section Hero -->
+        <section class="hero">
+            <h1>WikiParse </h1>
+            <p>La solution ultime pour l'analyse stratégique des contributions Wikipedia. Détectez les utilisateurs dangereux, analysez les biais, protégez les articles et optimisez votre veille stratégique avec notre plateforme.</p>
+            <div class="actions" style="justify-content: center;">
+                <a href="{{ url_for('login') }}" class="btn" style="background: white; color: var(--primary); font-weight: 600; padding: 1rem 2rem;">Se connecter</a>
+                <a href="{{ url_for('register') }}" class="btn" style="background: white; color: var(--primary); font-weight: 600; padding: 1rem 2rem;">S'inscrire</a>
+            </div>
+        </section>
+
+        <!-- Section Logos clients -->
+        <div style="text-align: center; margin: 3rem 0;">
+            <p style="margin-bottom: 1.5rem; color: var(--text-light); font-size: 0.9rem; opacity: 0.5;">DÉVELOPPÉ PAR L'ÉQUIPE DU CRIF</p>
+            <div style="display: flex; justify-content: center; flex-wrap: wrap; gap: 2rem; align-items: center;">
+                <a href="https://www.linkedin.com/in/aron-maarek-824021176/" class="nav-link round" data-tooltip="Aron Maarek">
+                    <img src="https://media.licdn.com/dms/image/v2/D4D03AQH3VUGk2xlVQg/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1709073816443?e=1756339200&v=beta&t=Brz_wtg4jKHxzyLvvJq6he7qO89LVGs4OiHigKRfJUk" alt="Aron Maarek" class="client-logo round">
+                </a>
+                <a href="https://www.crif.org" class="nav-link" data-tooltip="CRIF">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/CRIF_logo.svg/320px-CRIF_logo.svg.png" alt="Logo CRIF" class="client-logo" style="height: 5rem;">
+                </a>
+            </div>
+        </div>
+
+        <!-- Section Statistiques -->
+        <div class="card">
+            <h2 style="text-align: center; margin-bottom: 2rem;">Notre impact en chiffres</h2>
+            <div class="stats-container">
+                <div class="stat-box">
+                    <div class="stat-number round-text">1,000+</div>
+                    <div class="stat-label">Requêtes IA par euro</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number round-text">20,000+</div>
+                    <div class="stat-label">Utilisateurs surveillés</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number round-text">90%+</div>
+                    <div class="stat-label">Temps gagné sur les recherches et la surveillance</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section Fonctionnalités -->
+        <h2 style="text-align: center; margin: 4rem 0 2rem 0;">Nos Fonctionnalités</h2>
+        <div id="fonction" class="feature-grid">
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-file"></i>
+                </div>
+                <h3>Analyse des articles</h3>
+                <p>Surveillez les articles à risques en observant les révisions et les contributeurs.</p>
+                <a href="{{ url_for('articles') if session.get('is_approved') else url_for('login') }}" class="btn btn-sm">Explorer</a>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-user"></i>
+                </div>
+                <h3>Surveillance des utilisateurs</h3>
+                <p>Conservez un historique des révisions de l'utilisateur pour évaluez des menaces.</p>
+                <a href="{{ url_for('users_list') if session.get('is_approved') else url_for('login') }}" class="btn btn-sm">Explorer</a>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-calendar-day"></i>
+                </div>
+                <h3>Peuplement</h3>
+                <p>Remplissez la base de données et planifiez des renouvellements automatiques.</p>
+                <a href="{{ url_for('populate_db') if session.get('is_approved') else url_for('login') }}" class="btn btn-sm">Explorer</a>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-search"></i>
+                </div>
+                <h3>Recherche rapide</h3>
+                <p>Accédez rapidement à toutes les parties du site pour optimiser votre temps.</p>
+                <a href="{{ url_for('login') }}" class="btn btn-sm">Essayer</a>
+            </div>
+
+            <div class="feature-card premium">
+                <div class="feature-icon">
+                    <i class="fas fa-person"></i><i class="fas fa-person-dress"></i>
+                </div>
+                <h3>Gestion des utilisateurs</h3>
+                <p>Gérez votre équipe facilement pour augmenter votre efficacité.</p>
+                <a href="{{ url_for('admin_dashboard') if session.get('is_admin') else url_for('login') }}" class="btn btn-sm" style="background: #d4af37;">Explorer</a>
+            </div>
+            
+            <div class="feature-card premium">
+                <div class="feature-icon">
+                    <i class="fas fa-chart-pie"></i>
+                </div>
+                <h3>Tableaux de bord</h3>
+                <p>Visualisez votre impact en continu avec une infographie interactive.</p>
+                <a href="{{ url_for('admin_analytics') if session.get('is_admin') else url_for('login') }}" class="btn btn-sm" style="background: #d4af37;">Explorer</a>
+            </div>
+
+            <div class="feature-card premium">
+                <div class="feature-icon">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <h3>Classification par IA</h3>
+                <p>Classez automatiquement les contributeurs selon leur orientation et leur fiabilité à l'aide d'une IA dédiée.</p>
+                <a href="{{ url_for('classifier') if session.get('is_admin') else url_for('login') }}" class="btn btn-sm" style="background: #d4af37;">Explorer</a>
+            </div>
+            
+
+            <div class="feature-card coming">
+                <div class="feature-icon">
+                    <i class="fas fa-bell"></i>
+                </div>
+                <h3>Alertes en temps réel</h3>
+                <p>Recevez des notifications instantanées sur les modifications sensibles et les contributeurs problématiques.</p>
+                <a class="btn btn-sm" style="background: #FF91A4;">A venir</a>
+            </div>
+
+        </div>
+
+        <!-- Section Demo Video -->
+        <div id="demo" class="demo-video">
+            <h2 style="text-align: center; margin-bottom: 1rem;">Découvrez WikiParse en action</h2>
+            <p style="text-align: center; max-width: 700px; margin: 0 auto 2rem; color: var(--text-light);">Regardez notre vidéo de démonstration qui expose comment notre plateforme peut transformer votre analyse.</p>
+            <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" style="text-decoration: none;">
+                <div class="video-placeholder">
+                    <div class="play-button">
+                        <i class="fas fa-play"></i>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Section CTA finale -->
+        <div class="cta-section">
+            <h2 style="margin-bottom: 1rem;">Prêt à transformer votre analyse Wikipedia ?</h2>
+            <div class="actions" style="justify-content: center; margin-top: 2rem;">
+                <a href="{{ url_for('register') }}" class="btn" style="padding: 1rem 2rem; font-weight: 600;">Essayer maintenant</a>
+                <a href="#fonction" class="btn" style="padding: 1rem 2rem;">Voir les fonctionnalités</a>
+                <a href="#demo" class="btn" style="padding: 1rem 2rem;">Voir la démo</a>
+            </div>
+        </div>
+    </div>
+{% endblock %}

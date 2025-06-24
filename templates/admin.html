@@ -1,12 +1,11 @@
 {% extends 'index.html' %}
 {% block content %}
 <div class="admin-nav">
-    <a href="{{ url_for('admin_dashboard') }}" class="btn-admin">Gestion des Utilisateurs</a>
     <a href="{{ url_for('admin_analytics') }}" class="btn-admin">Dashboard Analytique</a>
     <a href="{{ url_for('classifier') }}" class="btn-admin">Assistant IA intégré</a>
     <a href="{{ url_for('debug_database') }}" class="btn-danger">
-    <i class="fas fa-bug"></i> Débugger la base de données
-</a>
+        <i class="fas fa-bug"></i> Débugger la base de données
+    </a>
 </div>
 
 <div class="admin-container">

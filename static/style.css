@@ -8,7 +8,7 @@
   --text-light: #666666;
   --bg: #f9fafc;
   --bg-light: #ffffff;
-  --border: #d9e2ef;
+  --border: #c6c8cb;
   --success: #28a745;
   --warning: #ffc107;
   --danger: #dc3545;
@@ -432,6 +432,13 @@ body {
   border: 1px solid var(--border);
 }
 
+.card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -689,6 +696,10 @@ input:focus, select:focus, textarea:focus {
   background: var(--primary);
   color: white;
   border-color: var(--primary);
+}
+
+.per-page-selector{
+    align-items: end;
 }
 
 /* User-specific styles */

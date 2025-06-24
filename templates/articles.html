@@ -1,41 +1,115 @@
 {% extends 'index.html' %}
-{% block title %}Liste des articles{% endblock %}
+{% block title %}Articles Wikipedia{% endblock %}
 
 {% block content %}
-<h1>Articles</h1>
+<div class="container">
+    <h1>Articles Wikipedia</h1>
 
-<input type="text" id="searchInput" placeholder="Rechercher un article..." style="margin-bottom: 10px; padding: 5px; width: 100%;">
+    <div class="card">
+        <!-- Search and filter controls -->
+        <div class="actions" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <div class="global-search" style="flex-grow: 1; margin-right: 1rem;">
+                <input type="text" id="searchInput" placeholder="Rechercher un article...">
+                <button type="submit"><i class="fas fa-search"></i></button>
+            </div>
+            
+            <form method="get" action="" style="display: flex; align-items: center;">
+                <label for="per_page" style="margin-right: 0.5rem;">Articles par page:</label>
+                <select name="per_page" onchange="this.form.submit()" style="padding: 0.5rem;">
+                    <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+                    <option value="25" {% if per_page == 25 %}selected{% endif %}>25</option>
+                    <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+                    <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+                </select>
+                <input type="hidden" name="page" value="1">
+            </form>
+        </div>
 
-<table id="articlesTable" border="1" style="width:100%; border-collapse: collapse;">
-    <thead>
-        <tr>
-            <th onclick="sortTable(0)">Titre 🔽</th>
-            <th onclick="sortTable(1)">Nombre de révisions 🔽</th>
-        </tr>
-    </thead>
-    <tbody>
-    {% for a in articles %}
-        <tr>
-            <td><a href="{{ url_for('article_detail', title=a['title']) }}">{{ a['title'] }}</a></td>
-            <td>{{ a['rev_count'] }}</td>
-        </tr>
-    {% endfor %}
-    </tbody>
-</table>
+        <!-- Articles table -->
+        <table id="articlesTable">
+            <thead>
+                <tr>
+                    <th onclick="sortTable(0)">Titre</th>
+                    <th onclick="sortTable(1)">Révisions</th>
+                    <th onclick="sortTable(2)">Contributeurs</th>
+                    <th onclick="sortTable(3)">Dernière modification</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for a in articles %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('article_detail', title=a['title']) }}" class="diff-link">
+                            {{ a['title'] }}
+                        </a>
+                    </td>
+                    <td>{{ a['nb_revisions'] or a['rev_count'] }}</td>
+                    <td>
+                        <a href="{{ url_for('users_list', article=a['title']) }}" class="diff-link">
+                            {{ a['nb_users'] or 'Voir' }}
+                        </a>
+                    </td>
+                    <td>{{ a['last_change'] or '' }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Pagination -->
+        <div class="pagination">
+            {% if page > 1 %}
+                <a href="{{ url_for('articles', page=page-1, per_page=per_page) }}">&laquo; Previous</a>
+            
+            {% for p in range(1, (total // per_page + 2)) %}
+                {% if p == page %}
+                    <span class="current-page">{{ p }}</span>
+                {% else %}
+                    <a href="{{ url_for('articles', page=p, per_page=per_page) }}">{{ p }}</a>
+                {% endif %}
+            {% endfor %}
+            
+            {% if page * per_page < total %}
+                <a href="{{ url_for('articles', page=page+1, per_page=per_page) }}">Next &raquo;</a>
+            {% endif %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    th:hover {
+        cursor: pointer;
+    }
+</style>
 
 <script>
-    // Tri de la table
-    let sortDirection = [true, true];
+    // Table sorting
+    let sortDirections = [true, true, true, true];
     function sortTable(colIndex) {
         const table = document.getElementById("articlesTable");
+        const headers = table.querySelectorAll('th');
+        
+        // Reset all header arrows
+        headers.forEach((header, index) => {
+            if(index !== colIndex) {
+                header.innerHTML = header.textContent.replace(/[↑↓]/g, '');
+            }
+        });
+        
+        // Toggle direction for current column
+        sortDirections[colIndex] = !sortDirections[colIndex];
+        const direction = sortDirections[colIndex] ? '↑' : '↓';
+        
+        // Update current header
+        headers[colIndex].innerHTML = headers[colIndex].textContent.replace(/[↑↓]/g, '') + ' ' + direction;
+
         const rows = Array.from(table.rows).slice(1); // skip header
-        const direction = sortDirection[colIndex] ? 1 : -1;
-        sortDirection[colIndex] = !sortDirection[colIndex];
+        const directionMultiplier = sortDirections[colIndex] ? 1 : -1;
 
         rows.sort((a, b) => {
-            const aText = a.cells[colIndex].innerText.toLowerCase();
-            const bText = b.cells[colIndex].innerText.toLowerCase();
-            return (isNaN(aText) ? aText.localeCompare(bText) : aText - bText) * direction;
+            const aText = a.cells[colIndex].textContent.toLowerCase().trim();
+            const bText = b.cells[colIndex].textContent.toLowerCase().trim();
+            return (isNaN(aText) ? aText.localeCompare(bText) : parseFloat(aText) - parseFloat(bText)) * directionMultiplier;
         });
 
         const tbody = table.tBodies[0];
@@ -43,7 +117,7 @@
         rows.forEach(row => tbody.appendChild(row));
     }
 
-    // Filtrage par recherche
+    // Search filtering
     document.getElementById("searchInput").addEventListener("keyup", function () {
         const filter = this.value.toLowerCase();
         const rows = document.querySelectorAll("#articlesTable tbody tr");
@@ -54,5 +128,4 @@
         });
     });
 </script>
-
 {% endblock %}

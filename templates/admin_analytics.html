@@ -1,11 +1,16 @@
 {% extends 'index.html' %}
 {% block content %}
+<div class="admin-nav">
+    <a href="{{ url_for('admin_dashboard') }}" class="btn-admin">Gestion des Utilisateurs</a>
+    <a href="{{ url_for('classifier') }}" class="btn-admin">Assistant IA intégré</a>
+</div>
+
 <div class="analytics-container">
-    <h1>Advanced Analytics Dashboard</h1>
+    <h1>Dashboard Analytique</h1>
     <div class="dashboard-embed">
         <iframe src="http://localhost:8501" width="100%" height="800" frameborder="0"></iframe>
     </div>
-    <p class="note">Note: The analytics dashboard requires Streamlit to be running on port 8501</p>
+    <p class="note">Note: Le dashboard tourne sur un autre serveur qui peut être indisponible.</p>
 </div>
 
 <style>
@@ -21,6 +26,13 @@
 .note {
     color: #666;
     font-style: italic;
+}
+.btn-admin {
+    background-color: #17a2b8;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    text-decoration: none;
 }
 </style>
 {% endblock %}

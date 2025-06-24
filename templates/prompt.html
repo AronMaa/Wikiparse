@@ -3,6 +3,11 @@
 {% block title %}Analyse des contributeurs Wikipédia{% endblock %}
 
 {% block content %}
+<div class="admin-nav">
+    <a href="{{ url_for('admin_dashboard') }}" class="btn-admin">Gestion des Utilisateurs</a>
+    <a href="{{ url_for('admin_analytics') }}" class="btn-admin">Dashboard Analytique</a>
+</div>
+
 <div class="analyzer-container">
     <h1 class="analyzer-title">Analyse des contributions Wikipédia</h1>
 
@@ -397,6 +402,14 @@
         align-items: flex-start;
         gap: 1rem;
     }
+}
+
+.btn-admin {
+    background-color: #17a2b8;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    text-decoration: none;
 }
 </style>
 
