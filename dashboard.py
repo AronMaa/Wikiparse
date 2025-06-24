@@ -252,7 +252,7 @@ def show_admin_dashboard():
         with num_input_col:
             if not selected_articles:
                 custom_min = st.number_input(
-                    "Entrez une valeur exacte",
+                    "",
                     min_value=0,
                     max_value=10000,
                     value=10,
@@ -378,7 +378,7 @@ def show_admin_dashboard():
             num_users = st.slider("Nombre d'utilisateurs à afficher", 5, 100, 20)
         with custom_num_col:
             custom_num = st.number_input(
-                "Entrez un nombre exact",
+                "",
                 min_value=1,
                 max_value=500,
                 value=20,
