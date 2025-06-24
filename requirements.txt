@@ -26,7 +26,6 @@ apscheduler==3.10.4
 
 # AI/ML
 openai==1.12.0
-tiktoken==0.9.0
 
 # Utilities
 python-dotenv==1.1.1
