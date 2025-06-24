@@ -1,13 +1,15 @@
-from flask import Flask, render_template, request
+import sqlite3
 import requests
 import difflib
 from openai import OpenAI
+from dotenv import load_dotenv
+import os
 
-app = Flask(__name__)
+load_dotenv()
 
 # Configurez votre clé API
 client = OpenAI(
-  api_key=""
+  api_key = os.getenv("API_KEY")
 )
 
 def get_user_revisions_diff(username, limit=10):
@@ -91,23 +93,33 @@ def generate_diff(old_text, new_text):
     return "".join(result) if result else "[Aucun changement de texte détecté]"
 
 def build_prompt_from_revisions(username, revisions):
-    """Construit un prompt formaté à partir de révisions"""
     prompt = (
         f"Analyse des contributions de l'utilisateur Wikipédia '{username}':\n\n"
-        "Pour chaque modification, examiner la nature des changements, le commentaire de modification et les flags.\n\n"
+        "Tu dois analyser l’ensemble des révisions ci-dessous pour détecter une orientation idéologique potentielle. "
+        "Ignore les fautes de frappe ou les contributions techniques.\n\n"
     )
-    
+
     for rev in revisions:
         prompt += (
-            f"{rev['title']}\n"
-            f"Flags: {rev.get('flags', 'Aucun')}\n"
-            f"Commentaire: {rev.get('comment', 'Aucun')}\n"
-            f"Modifications:\n{rev.get('diff', '[Diff non disponible]')}"[:1000]+"\n\n"
+            f"--- Article : {rev['title']} ---\n"
+            f"Flags : {rev.get('flags', 'Aucun')}\n"
+            f"Commentaire : {rev.get('comment', 'Aucun')}\n"
+            f"Modifications (extrait) :\n{rev.get('diff', '[Diff non disponible]')[:1000]}\n\n"
         )
 
     prompt += (
-        "Classifiez l'utilisateur comme 'pro-palestine', 'pro-israel' ou 'neutre' avec une courte justification en une vingtaine de mots."
+        "Critères d'analyse :\n"
+        "- Pro-palestine : modifications ou commentaires qui accusent Israël (colonisation, apartheid, génocide, etc.), mettent en avant les victimes palestiniennes, ou utilisent des sources pro-palestiniennes.\n"
+        "- Pro-israel : modifications qui soutiennent les actions militaires d'Israël, parlent de terrorisme palestinien, défendent Tsahal, ou utilisent des sources pro-israéliennes.\n"
+        "- Neutre : modifications équilibrées ou factuelles, présentant les deux points de vue, ou évitant les termes émotionnellement chargés.\n\n"
+        "Instructions :\n"
+        "Classifie l'utilisateur selon l'orientation globale de ses contributions comme 'pro-palestine', 'pro-israel' ou 'neutre'.\n"
+        "Donne une justification en 20 à 30 mots.\n\n"
+        "Format de réponse :\n"
+        "Classification: [pro-palestine/pro-israel/neutre]\n"
+        "Justification: []"
     )
+    
     return prompt
 
 def analyze_with_gpt(prompt):
@@ -116,11 +128,73 @@ def analyze_with_gpt(prompt):
         response = client.chat.completions.create(
             model="gpt-4.1-mini",
             messages=[
-                {"role": "system", "content": "Vous êtes un analyste expert des contributions Wikipédia."},
+                {"role": "system", "content": "Vous êtes un agent spécialisé dans Wikipédia qui combat l'antisémite."},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.2
+            temperature=0.3,
+            max_tokens=150
         )
-        return response.choices[0].message.content
+        full_response = response.choices[0].message.content
+        classification = parse_analysis(full_response)
+        return classification, full_response
     except Exception as e:
         return f"Erreur d'analyse: {str(e)}"
+    
+def parse_analysis(text):
+    # Parse la réponse structurée de GPT
+    classification = "neutre"
+    
+    if 'Classification:' in text and 'Justification:' in text:
+        parts = text.split('Justification:')
+        classification_part = parts[0].replace('Classification:', '').strip().lower()
+        
+        if 'palestine' in classification_part:
+            classification = 'pro-palestine'
+        elif 'israel' in classification_part:
+            classification = 'pro-israel'
+    
+    return classification
+
+def analyze_top_contributors(limit=100):
+    """Analyse les utilisateurs les plus actifs et met à jour leur classification"""
+    conn = sqlite3.connect("wikipedia.db")
+    cursor = conn.cursor()
+    
+    # Récupérer les utilisateurs avec le plus de contributions
+    cursor.execute("""
+        SELECT u.username, COUNT(r.id) as contribution_count 
+        FROM users u
+        JOIN revisions r ON r.user_id = u.id
+        WHERE u.is_bot = 0 
+          AND u.is_blocked = 0 
+          AND u.is_ip = 0
+          AND (u.classification IS NULL OR u.classification = '')
+        GROUP BY u.id
+        ORDER BY contribution_count DESC
+        LIMIT ?
+    """, (limit,))
+    
+    top_users = cursor.fetchall()
+    
+    results = []
+    for user in top_users:
+        username = user[0]
+        try:
+            revisions = get_user_revisions_diff(username)
+            prompt = build_prompt_from_revisions(username, revisions)
+            analysis = analyze_with_gpt(prompt)
+            # Mettre à jour la base de données
+            cursor.execute("""
+                UPDATE users 
+                SET classification = ?
+                WHERE username = ?
+            """, (analysis[0], username))
+            
+            results.append((username, analysis[0]))
+        except Exception as e:
+            print(f"Erreur lors de l'analyse de {username}: {str(e)}")
+            continue
+    
+    conn.commit()
+    conn.close()
+    return results
