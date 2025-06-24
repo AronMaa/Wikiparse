@@ -132,25 +132,9 @@ def classification_update(username, analysis):
         conn.commit()
 
 @app.route('/')
-@login_required
 def index():
-    """Homepage with article list"""
-    try:
-        conn = get_conn()
-        cursor = conn.cursor()
-        cursor.execute('''
-            SELECT a.title, COUNT(r.id) AS rev_count
-            FROM articles a
-            LEFT JOIN revisions r ON r.article_id = a.id
-            GROUP BY a.id;
-        ''')
-        articles = cursor.fetchall()
-        return render_template('articles.html', articles=articles)
-    except Exception as e:
-        flash(f"Error loading articles: {str(e)}", "error")
-        return render_template('articles.html', articles=[])
-    finally:
-        if conn: conn.close()
+    """Homepage"""
+    return render_template('home.html')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -422,7 +406,7 @@ def articles():
         articles = fetch_articles(conn, limit=per_page, page=page)  # Pass conn to fetch_articles
         cursor.execute("SELECT COUNT(*) FROM articles")
         total = cursor.fetchone()[0]
-        return render_template('articles_details.html',
+        return render_template('articles.html',
                             articles=articles,
                             page=page,
                             per_page=per_page,
